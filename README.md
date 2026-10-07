@@ -14,13 +14,15 @@ Crypxamination adalah aplikasi web sederhana untuk mempelajari alur enkripsi dan
 
 ## Fitur
 
+- **Role-Based Access Control (RBAC):** Memisahkan akses antara Guru dan Murid.
+- **Autentikasi (Supabase):** Menyimpan data sesi dan state tersinkronisasi di cloud menggunakan Supabase, dengan fallback ke `localStorage`.
 - Membangkitkan kunci RSA dari bilangan prima `p` dan `q`, atau mengacak nilai prima.
 - Menampilkan kunci publik `(e, n)` dan kunci privat `(d, n)`.
-- Mengelola mata pelajaran dan pasangan soal-jawaban.
+- Mengelola mata pelajaran dan pasangan soal-jawaban (Guru).
 - Mengenkripsi soal dan jawaban, lalu melihat ciphertext serta log perhitungan.
-- Mendekripsi ciphertext dan melihat kembali soal serta jawabannya.
-- Memfilter log dan ciphertext berdasarkan soal atau jawaban.
-- Menyimpan status aplikasi di `localStorage` browser agar dapat dipulihkan saat halaman dibuka kembali.
+- Halaman Ujian khusus (`exam.html`) bagi Murid untuk menjawab soal.
+- Enkripsi hasil ujian (Soal, Kunci Jawaban, dan Jawaban Murid) setelah selesai.
+- Sistem **Kata Sandi 6 Digit** per mata pelajaran (diatur oleh Guru) untuk mendekripsi hasil ujian Murid.
 
 ## Menjalankan aplikasi
 
@@ -126,8 +128,13 @@ Kasus 3 sampai 5 adalah keterbatasan yang diketahui (lihat bagian Batasan dan ke
 
 ```text
 .
-├── index.html   # Struktur halaman dan elemen antarmuka
-├── style.css    # Gaya dan tata letak
-├── app.js       # Interaksi, alur aplikasi, dan penyimpanan localStorage
-└── rsa.js       # Fungsi matematika RSA, enkripsi, dan dekripsi
+├── index.html          # Dasbor utama Guru (Pembangkitan Kunci, Input Soal)
+├── exam.html           # Halaman khusus Murid untuk mengerjakan ujian
+├── login.html          # Halaman autentikasi/login
+├── style.css           # Gaya dan tata letak
+├── app.js              # Logika Dasbor Guru (Enkripsi/Dekripsi Guru, Manajemen Sandi)
+├── exam.js             # Logika Pengerjaan Ujian dan Enkripsi/Dekripsi Hasil (Siswa)
+├── auth.js             # Logika Autentikasi dan Cek Sesi (Supabase)
+├── supabaseConfig.js   # Konfigurasi Koneksi Klien Supabase
+└── rsa.js              # Fungsi matematika RSA murni
 ```

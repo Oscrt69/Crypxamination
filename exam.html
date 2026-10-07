@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypxamination - Lembar Ujian</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="rsa.js" defer></script>
+    <script type="module" src="exam.js"></script>
+</head>
+<body>
+    <div class="top-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon-sm">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+        </svg>
+        <span>Sistem Ujian Terenkripsi — Lembar Ujian</span>
+    </div>
+
+    <header class="app-header">
+        <div class="header-container">
+            <div class="logo-area">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                </div>
+                <div class="logo-text">
+                    <h1>Crypxamination</h1>
+                    <p>Lembar Ujian Murid</p>
+                </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="header-badge" style="background: white; border: 1px solid #e2e8f0; color: #334155;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span id="user-email-display">Memuat...</span>
+                </div>
+                <button id="btn-back-home" class="btn btn-sm btn-outline" style="padding: 6px 12px; font-size: 13px;">
+                    Kembali
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Exam Section -->
+        <section id="section-exam" class="step-content active">
+            <div class="section-header">
+                <h2 id="exam-title">Mata Pelajaran: Memuat...</h2>
+                <p>Silakan kerjakan soal-soal di bawah ini.</p>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="card-icon bg-green-100">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                    </div>
+                    <div class="card-title">
+                        <h3>Lembar Soal</h3>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="exam-questions-container">
+                        <!-- Questions will be rendered here -->
+                    </div>
+                    <button class="btn btn-primary mt-4" id="btn-finish-exam" style="width: 100%;">
+                        Selesai Mengerjakan
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Result Section -->
+        <section id="section-result" class="step-content" style="display: none;">
+            <div class="section-header">
+                <h2>Ujian Selesai</h2>
+                <p>Hasil ujian Anda telah dienkripsi.</p>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="card-icon bg-yellow-100">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#ca8a04" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 019.9-1"></path></svg>
+                    </div>
+                    <div class="card-title">
+                        <h3>Hasil Ujian (Terenkripsi)</h3>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="result-encrypted-container">
+                        <!-- Encrypted result will be rendered here -->
+                    </div>
+                    
+                    <div class="mt-4 p-4 bg-light" style="border-radius: var(--radius); border: 1px solid var(--border);">
+                        <h4>Dekripsi Hasil</h4>
+                        <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Masukkan 6 digit kata sandi dari guru untuk melihat hasil yang sebenarnya.</p>
+                        <div class="input-with-button">
+                            <input type="text" id="input-decrypt-password" placeholder="Masukkan 6 digit angka..." maxlength="6" pattern="\d{6}">
+                            <button class="btn btn-warning" id="btn-decrypt-result">Dekripsi</button>
+                        </div>
+                    </div>
+
+                    <div id="result-decrypted-container" class="mt-4 hidden">
+                        <!-- Decrypted result will be rendered here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
