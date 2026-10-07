@@ -4,6 +4,14 @@ Crypxamination adalah aplikasi web sederhana untuk mempelajari alur enkripsi dan
 
 > Proyek ini ditujukan untuk pembelajaran dan demonstrasi, bukan untuk melindungi soal ujian atau data sensitif di lingkungan nyata. Implementasinya menggunakan RSA dasar tanpa padding dan ukuran kunci yang sangat kecil, sehingga tidak aman.
 
+## Identitas Kelompok
+ 
+| Nama  | NRP        |
+| ----- | ---------- |
+| Tiara | 5027241013 |
+| Diva  | 5027241083 |
+| Oscar | 5027241053 |
+
 ## Fitur
 
 - Membangkitkan kunci RSA dari bilangan prima `p` dan `q`, atau mengacak nilai prima.
@@ -54,6 +62,48 @@ Dekripsi:  m = c^d mod n
 
 Implementasi fungsi matematika RSA dan konversi karakter berada di `rsa.js`; alur antarmuka dan penyimpanan browser berada di `app.js`.
 
+### Pemilihan e dan d
+ 
+- **Memilih `e`:** aplikasi mencoba `e = 65537`. Jika nilai itu tidak kurang dari `φ(n)` atau tidak relatif prima dengan `φ(n)`, `e` dicari mulai dari 3 (bilangan ganjil) sampai ditemukan yang relatif prima dengan `φ(n)` (`gcd(e, φ(n)) = 1`).
+- **Menghitung `d`:** `d` adalah invers modular dari `e` terhadap `φ(n)`, sehingga `e x d ≡ 1 (mod φ(n))`. Dihitung dengan Extended Euclidean Algorithm.
+- Perpangkatan modular dihitung dengan metode kuadrat berulang (square-and-multiply), sehingga angka antara selalu di-`mod n` dan tidak membesar.
+### Contoh perhitungan (p = 11, q = 13)
+ 
+| Langkah | Perhitungan                                                          | Hasil |
+| ------- | -------------------------------------------------------------------- | ----- |
+| n       | 11 x 13                                                              | 143   |
+| φ(n)    | (11 - 1) x (13 - 1) = 10 x 12                                        | 120   |
+| e       | 65537 lebih besar dari 120, maka dicari: 3 dan 5 tidak relatif prima dengan 120, 7 relatif prima | 7 |
+| d       | 7 x 103 = 721 = 6 x 120 + 1                                          | 103   |
+ 
+Kunci publik `(e = 7, n = 143)` dan kunci privat `(d = 103, n = 143)`. Enkripsi teks `Hai`:
+ 
+| Karakter | ASCII (m) | Enkripsi `m^7 mod 143` | Ciphertext | Dekripsi `c^103 mod 143` |
+| -------- | --------- | ---------------------- | ---------- | ------------------------ |
+| H        | 72        | 72^7 mod 143           | 19         | 72 -> H                  |
+| a        | 97        | 97^7 mod 143           | 59         | 97 -> a                  |
+| i        | 105       | 105^7 mod 143          | 118        | 105 -> i                 |
+ 
+Ciphertext lengkap: `19,59,118`.
+ 
+### Perbedaan dengan contoh di materi kuliah
+ 
+Materi kuliah mencontohkan teks yang diubah menjadi angka (A=00 sampai Z=25), dipecah menjadi blok beberapa digit, lalu tiap blok dienkripsi. Aplikasi ini memilih cara yang lebih sederhana: setiap karakter dienkripsi sendiri-sendiri dengan kode ASCII-nya agar log perhitungan mudah dibaca. Syarat dasar RSA tetap sama, yaitu nilai plaintext `m` harus berada pada selang `[0, n-1]`. Konsekuensinya, cara ini deterministik (karakter yang sama selalu menghasilkan ciphertext yang sama) sehingga pola teks bisa ditebak.
+ 
+## Pengujian
+ 
+Pengujian dilakukan dengan menjalankan fungsi di `rsa.js` (pembangkitan kunci, enkripsi, lalu dekripsi) pada beberapa masukan.
+ 
+| No | Masukan                                  | Hasil yang diharapkan                                         | Hasil                                                            |
+| -- | ---------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 1  | p=11, q=13, teks `Hai`                   | e=7, d=103, ciphertext `19,59,118`, dekripsi kembali ke `Hai` | Sesuai                                                           |
+| 2  | p=61, q=53, teks berisi soal dan jawaban | Dekripsi sama dengan teks asli                                | Sesuai                                                           |
+| 3  | p=5, q=7 (n=35), teks `Halo`             | Dekripsi sama dengan teks asli                                | **Gagal**: kode ASCII lebih besar dari n                         |
+| 4  | p=11, q=11, teks `Halo`                  | Dekripsi sama dengan teks asli                                | **Gagal**: p = q membuat φ(n) salah                              |
+| 5  | p=11, q=13, teks `Café`                  | Dekripsi sama dengan teks asli                                | **Gagal**: `é` (kode 233) lebih besar dari n=143, terbaca `CafZ` |
+ 
+Kasus 3 sampai 5 adalah keterbatasan yang diketahui (lihat bagian Batasan dan keamanan).
+
 ## Batasan dan keamanan
 
 - Nilai prima acak dibatasi pada rentang 11–97. Ukuran ini hanya memadai untuk demonstrasi; jangan gunakan kunci yang dihasilkan untuk keamanan nyata.
@@ -62,6 +112,15 @@ Implementasi fungsi matematika RSA dan konversi karakter berada di `rsa.js`; alu
 - Pemisah `@` dan `|` merupakan bagian dari format data; penggunaannya di dalam teks dapat mengganggu tampilan hasil dekripsi.
 - Data soal, jawaban, ciphertext, serta kunci disimpan di `localStorage` pada browser yang sama. Penyimpanan tersebut bukan penyimpanan terenkripsi dan tidak disinkronkan antarperangkat.
 - Untuk aplikasi ujian sungguhan, gunakan pustaka kriptografi tepercaya, manajemen kunci yang aman, skema enkripsi yang sesuai, dan evaluasi keamanan profesional.
+
+## Cakupan
+ 
+**Termasuk:**
+ 
+- [x] Pembangkitan kunci RSA dari `p` dan `q`
+- [x] Enkripsi dan dekripsi per karakter dengan log perhitungan
+- [x] Pengelolaan mata pelajaran dan pasangan soal-jawaban
+- [x] Penyimpanan status di `localStorage`
 
 ## Struktur proyek
 
