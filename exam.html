@@ -57,11 +57,12 @@
             <div class="card mb-4" id="card-decrypt-soal">
                 <div class="card-body">
                     <h4 style="margin-top: 0;">Dekripsi Soal Ujian</h4>
-                    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Masukkan 6 digit kata sandi soal dari guru untuk melihat soal. Anda dapat mengerjakan ujian tanpa mendekripsi soal terlebih dahulu jika ingin menebak.</p>
-                    <div class="input-with-button">
-                        <input type="text" id="input-decrypt-soal-password" placeholder="Masukkan 6 digit angka..." maxlength="6" pattern="\d{6}">
-                        <button class="btn btn-warning" id="btn-decrypt-soal">Dekripsi Soal</button>
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Masukkan <strong>Kunci Privat</strong> <code>(d, n)</code> dari guru untuk mendekripsi dan melihat soal ujian.</p>
+                    <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                        <input type="text" id="input-decrypt-soal-d" placeholder="Nilai d" style="flex: 1;">
+                        <input type="text" id="input-decrypt-soal-n" placeholder="Nilai n" style="flex: 1;">
                     </div>
+                    <button class="btn btn-warning" id="btn-decrypt-soal" style="width: 100%;">Dekripsi Soal</button>
                 </div>
             </div>
 
@@ -78,7 +79,7 @@
                     <div id="exam-questions-container">
                         <!-- Questions will be rendered here -->
                     </div>
-                    <button class="btn btn-primary mt-4" id="btn-finish-exam" style="width: 100%;">
+                    <button class="btn btn-primary mt-4" id="btn-finish-exam" style="width: 100%; display: none;">
                         Selesai Mengerjakan
                     </button>
                 </div>
@@ -106,13 +107,14 @@
                         <!-- Encrypted result will be rendered here -->
                     </div>
                     
-                    <div class="mt-4 p-4 bg-light" style="border-radius: var(--radius); border: 1px solid var(--border);">
+                    <div class="mt-4 p-4 bg-light" style="border-radius: var(--radius); border: 1px solid var(--border);" id="card-decrypt-result">
                         <h4>Dekripsi Hasil</h4>
-                        <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Masukkan 6 digit kata sandi dari guru untuk melihat hasil yang sebenarnya.</p>
-                        <div class="input-with-button">
-                            <input type="text" id="input-decrypt-password" placeholder="Masukkan 6 digit angka..." maxlength="6" pattern="\d{6}">
-                            <button class="btn btn-warning" id="btn-decrypt-result">Dekripsi</button>
+                        <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Masukkan <strong>Kunci Privat</strong> <code>(d, n)</code> untuk melihat nilai asli dari hasil ujian yang dikumpulkan.</p>
+                        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                            <input type="text" id="input-decrypt-result-d" placeholder="Nilai d" style="flex: 1;">
+                            <input type="text" id="input-decrypt-result-n" placeholder="Nilai n" style="flex: 1;">
                         </div>
+                        <button class="btn btn-warning" id="btn-decrypt-result" style="width: 100%;">Dekripsi Hasil</button>
                     </div>
 
                     <div id="result-decrypted-container" class="mt-4 hidden">

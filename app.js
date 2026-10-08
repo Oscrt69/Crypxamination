@@ -534,35 +534,9 @@ document.addEventListener('DOMContentLoaded', () => {
             containerDekripsiQnA.style.display = 'block';
             
             if (userRole === 'guru') {
-                document.getElementById('card-password-management').style.display = 'block';
                 document.getElementById('card-dekripsi-teacher').style.display = 'block';
                 document.getElementById('card-student-confirm').style.display = 'none';
-                
-                // Update Password UI
-                const currentPass = subjects[sub].password;
-                const dispPass = document.getElementById('disp-current-password');
-                const btnDeletePass = document.getElementById('btn-delete-password');
-                if (currentPass) {
-                    dispPass.innerText = currentPass;
-                    btnDeletePass.style.display = 'inline-block';
-                } else {
-                    dispPass.innerText = 'Belum diatur';
-                    btnDeletePass.style.display = 'none';
-                }
-                
-                // Update Password Soal UI
-                const currentPassSoal = subjects[sub].passwordSoal;
-                const dispPassSoal = document.getElementById('disp-current-password-soal');
-                const btnDeletePassSoal = document.getElementById('btn-delete-password-soal');
-                if (currentPassSoal) {
-                    dispPassSoal.innerText = currentPassSoal;
-                    btnDeletePassSoal.style.display = 'inline-block';
-                } else {
-                    dispPassSoal.innerText = 'Belum diatur';
-                    btnDeletePassSoal.style.display = 'none';
-                }
             } else if (userRole === 'murid') {
-                document.getElementById('card-password-management').style.display = 'none';
                 document.getElementById('card-dekripsi-teacher').style.display = 'none';
                 document.getElementById('card-student-confirm').style.display = 'block';
             }
@@ -579,63 +553,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    document.getElementById('btn-save-password')?.addEventListener('click', () => {
-        const sub = selectDecrypt.value;
-        const pass = document.getElementById('input-subject-password').value.trim();
-        if (!sub) return alert("Pilih mata pelajaran terlebih dahulu.");
-        if (pass.length !== 6 || isNaN(pass)) return alert("Kata sandi harus berupa 6 digit angka.");
-        
-        subjects[sub].password = pass;
-        saveState();
-        
-        document.getElementById('disp-current-password').innerText = pass;
-        document.getElementById('btn-delete-password').style.display = 'inline-block';
-        document.getElementById('input-subject-password').value = '';
-        alert("Kata sandi hasil berhasil disimpan!");
-    });
 
-    document.getElementById('btn-delete-password')?.addEventListener('click', () => {
-        const sub = selectDecrypt.value;
-        if (!sub) return;
-        
-        if (confirm("Apakah Anda yakin ingin menghapus kata sandi hasil untuk mata pelajaran ini?")) {
-            delete subjects[sub].password;
-            saveState();
-            
-            document.getElementById('disp-current-password').innerText = 'Belum diatur';
-            document.getElementById('btn-delete-password').style.display = 'none';
-            alert("Kata sandi hasil berhasil dihapus.");
-        }
-    });
-
-    document.getElementById('btn-save-password-soal')?.addEventListener('click', () => {
-        const sub = selectDecrypt.value;
-        const pass = document.getElementById('input-subject-password-soal').value.trim();
-        if (!sub) return alert("Pilih mata pelajaran terlebih dahulu.");
-        if (pass.length !== 6 || isNaN(pass)) return alert("Kata sandi harus berupa 6 digit angka.");
-        
-        subjects[sub].passwordSoal = pass;
-        saveState();
-        
-        document.getElementById('disp-current-password-soal').innerText = pass;
-        document.getElementById('btn-delete-password-soal').style.display = 'inline-block';
-        document.getElementById('input-subject-password-soal').value = '';
-        alert("Kata sandi soal berhasil disimpan!");
-    });
-
-    document.getElementById('btn-delete-password-soal')?.addEventListener('click', () => {
-        const sub = selectDecrypt.value;
-        if (!sub) return;
-        
-        if (confirm("Apakah Anda yakin ingin menghapus kata sandi soal untuk mata pelajaran ini?")) {
-            delete subjects[sub].passwordSoal;
-            saveState();
-            
-            document.getElementById('disp-current-password-soal').innerText = 'Belum diatur';
-            document.getElementById('btn-delete-password-soal').style.display = 'none';
-            alert("Kata sandi soal berhasil dihapus.");
-        }
-    });
 
     document.getElementById('btn-start-exam')?.addEventListener('click', () => {
         const sub = selectDecrypt.value;

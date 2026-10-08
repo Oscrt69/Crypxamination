@@ -236,46 +236,6 @@
             </div>
 
             <div id="container-dekripsi-qna" style="display: none;">
-                <!-- Teacher Only: Password Management -->
-                <div class="card mb-4" id="card-password-management" style="display: none;">
-                    <div class="card-header">
-                        <div class="card-icon bg-blue-100">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
-                        </div>
-                        <div class="card-title">
-                            <h3>Manajemen Kata Sandi (6 Digit)</h3>
-                            <p>Kata sandi untuk siswa mendekripsi hasil ujian</p>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <!-- Password untuk Soal -->
-                        <div class="mb-4">
-                            <h5>Kata Sandi Buka Soal</h5>
-                            <p style="font-size: 13px; color: #64748b;">Kata sandi agar siswa bisa melihat soal dalam bentuk teks asli.</p>
-                            <div class="input-with-button mt-2">
-                                <input type="text" id="input-subject-password-soal" placeholder="Masukkan 6 digit angka..." maxlength="6" pattern="\d{6}">
-                                <button class="btn btn-primary" id="btn-save-password-soal">Simpan</button>
-                            </div>
-                            <p style="font-size: 13px; color: #64748b; margin-top: 8px;">Kata sandi saat ini: <strong id="disp-current-password-soal">Belum diatur</strong></p>
-                            <button class="btn btn-sm btn-outline mt-2" id="btn-delete-password-soal" style="color: #ef4444; border-color: #ef4444; display: none;">Hapus Kata Sandi</button>
-                        </div>
-
-                        <hr style="border: 0; border-top: 1px solid var(--border); margin: 15px 0;">
-
-                        <!-- Password untuk Hasil -->
-                        <div>
-                            <h5>Kata Sandi Buka Hasil (Nilai)</h5>
-                            <p style="font-size: 13px; color: #64748b;">Kata sandi untuk siswa mendekripsi hasil ujian.</p>
-                            <div class="input-with-button mt-2">
-                                <input type="text" id="input-subject-password" placeholder="Masukkan 6 digit angka..." maxlength="6" pattern="\d{6}">
-                                <button class="btn btn-primary" id="btn-save-password">Simpan</button>
-                            </div>
-                            <p style="font-size: 13px; color: #64748b; margin-top: 8px;">Kata sandi saat ini: <strong id="disp-current-password">Belum diatur</strong></p>
-                            <button class="btn btn-sm btn-outline mt-2" id="btn-delete-password" style="color: #ef4444; border-color: #ef4444; display: none;">Hapus Kata Sandi</button>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- Student Only: Konfirmasi Ujian -->
                 <div class="card mb-4" id="card-student-confirm" style="display: none;">
                     <div class="card-header">

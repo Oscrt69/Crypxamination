@@ -126,49 +126,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
 
-        // We decrypt the exam using privateKey to show to the student
+        // Jangan dekripsi otomatis, tampilkan ciphertext mentahnya ke user
         const cipher = subjectData.encryptionResult.ciphertext;
-        try {
-            const result = decryptMessage(cipher, privateKey.d, privateKey.n);
-            const plaintext = result.plaintext;
-            
-            if (plaintext.includes('_=_SEP_ITEM_=_') || plaintext.includes('_=_SEP_QNA_=_')) {
-                const items = plaintext.split('_=_SEP_ITEM_=_');
-                const container = document.getElementById('exam-questions-container');
-                container.innerHTML = '';
-                
-                currentQuestions = [];
-                currentAnswers = [];
-
-                items.forEach((item, i) => {
-                    const [q, a] = item.split('_=_SEP_QNA_=_');
-                    currentQuestions.push(q);
-                    currentAnswers.push(a);
-
-                    // Encrypt the question to show by default
-                    const encQ = encryptMessage(q, publicKey.e, publicKey.n).ciphertext;
-
-                    const div = document.createElement('div');
-                    div.style.marginBottom = '20px';
-                    div.style.borderBottom = '1px dashed #cbd5e1';
-                    div.style.paddingBottom = '15px';
-                    div.innerHTML = `
-                        <p style="margin-bottom: 10px; font-weight: 500;">
-                            <strong>Soal ${i + 1}:</strong> 
-                            <span id="soal-display-${i}" style="word-break: break-all; color: #64748b;">${encQ}</span>
-                        </p>
-                        <div>
-                            <label style="font-size: 13px; font-weight: 600; color: #475569;">Jawaban Anda:</label>
-                            <textarea class="student-answer-input" data-index="${i}" rows="3" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 6px;"></textarea>
-                        </div>
-                    `;
-                    container.appendChild(div);
-                });
-            }
-        } catch(e) {
-            alert("Gagal mendekripsi data ujian.");
-            console.error(e);
-        }
+        
+        const container = document.getElementById('exam-questions-container');
+        container.innerHTML = `
+            <div style="padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; word-break: break-all; color: #64748b; font-size: 13px; font-family: monospace;">
+                <strong>Soal Ujian Terenkripsi:</strong><br><br>
+                ${cipher}
+            </div>
+            <p style="margin-top: 15px; font-size: 14px; color: #ef4444; font-weight: 500;">
+                Anda belum mendekripsi soal ini. Silakan masukkan Kunci Privat di atas.
+            </p>
+        `;
     }
 
     let encryptedResultData = [];
@@ -216,65 +186,112 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('btn-decrypt-soal')?.addEventListener('click', () => {
-        const pwd = document.getElementById('input-decrypt-soal-password').value.trim();
+        const dVal = document.getElementById('input-decrypt-soal-d').value.trim();
+        const nVal = document.getElementById('input-decrypt-soal-n').value.trim();
         const subjectData = subjects[activeSubject];
         
-        if (!pwd) return alert("Masukkan kata sandi terlebih dahulu.");
-        if (!subjectData.passwordSoal) return alert("Guru belum mengatur kata sandi soal untuk mata pelajaran ini.");
+        if (!dVal || !nVal) return alert("Masukkan nilai d dan n terlebih dahulu.");
         
-        if (pwd !== subjectData.passwordSoal) {
-            return alert("Kata sandi salah!");
-        }
+        const cipher = subjectData.encryptionResult.ciphertext;
 
-        // Correct password
-        currentQuestions.forEach((q, i) => {
-            const el = document.getElementById(`soal-display-${i}`);
-            if(el) {
-                el.innerText = q || '-';
-                el.style.wordBreak = 'normal';
-                el.style.color = 'inherit';
+        try {
+            const result = decryptMessage(cipher, dVal, nVal);
+            const plaintext = result.plaintext;
+
+            if (plaintext.includes('_=_SEP_ITEM_=_') || plaintext.includes('_=_SEP_QNA_=_')) {
+                const items = plaintext.split('_=_SEP_ITEM_=_');
+                const container = document.getElementById('exam-questions-container');
+                container.innerHTML = '';
+                
+                currentQuestions = [];
+                currentAnswers = [];
+
+                items.forEach((item, i) => {
+                    const [q, a] = item.split('_=_SEP_QNA_=_');
+                    currentQuestions.push(q);
+                    currentAnswers.push(a);
+
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '20px';
+                    div.style.borderBottom = '1px dashed #cbd5e1';
+                    div.style.paddingBottom = '15px';
+                    div.innerHTML = `
+                        <p style="margin-bottom: 10px; font-weight: 500;">
+                            <strong>Soal ${i + 1}:</strong> 
+                            <span>${q || '-'}</span>
+                        </p>
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600; color: #475569;">Jawaban Anda:</label>
+                            <textarea class="student-answer-input" data-index="${i}" rows="3" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 6px;"></textarea>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+
+                // Hide the decrypt question card
+                document.getElementById('card-decrypt-soal').style.display = 'none';
+                document.getElementById('btn-finish-exam').style.display = 'block';
+            } else {
+                // Teks terdekripsi tapi delimiter hancur (kunci salah)
+                const container = document.getElementById('exam-questions-container');
+                container.innerHTML = `
+                    <div style="padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px;">
+                        <p style="margin: 0; font-size: 13px; font-family: monospace; word-break: break-all; color: #64748b;">
+                            ${plaintext}
+                        </p>
+                    </div>
+                `;
             }
-        });
-
-        // Hide the decrypt question card
-        document.getElementById('card-decrypt-soal').style.display = 'none';
+        } catch (e) {
+            alert("Terjadi kesalahan. Pastikan d dan n berupa angka valid!");
+        }
     });
 
     document.getElementById('btn-decrypt-result').addEventListener('click', () => {
-        const pwd = document.getElementById('input-decrypt-password').value.trim();
-        const subjectData = subjects[activeSubject];
+        const dVal = document.getElementById('input-decrypt-result-d').value.trim();
+        const nVal = document.getElementById('input-decrypt-result-n').value.trim();
         
-        if (!pwd) return alert("Masukkan kata sandi terlebih dahulu.");
-        if (!subjectData.password) return alert("Guru belum mengatur kata sandi untuk mata pelajaran ini.");
-        
-        if (pwd !== subjectData.password) {
-            return alert("Kata sandi salah!");
+        if (!dVal || !nVal) return alert("Masukkan nilai d dan n terlebih dahulu.");
+
+        try {
+            const decContainer = document.getElementById('result-decrypted-container');
+            decContainer.innerHTML = '<h4 style="margin-top:0;">Hasil Dekripsi</h4>';
+            
+            let allSuccess = true;
+
+            encryptedResultData.forEach((data, i) => {
+                // Decrypt from ciphertext using entered d and n
+                const decQ = decryptMessage(data.encQ, dVal, nVal).plaintext;
+                const decA = decryptMessage(data.encA, dVal, nVal).plaintext;
+                const decSA = decryptMessage(data.encSA, dVal, nVal).plaintext;
+
+                // Validate if it decrypted correctly by checking if it contains English/Indonesian chars (or just match length)
+                // For a robust system, if the keys are wrong, it outputs garbage.
+                
+                const isCorrect = decA.toLowerCase().trim() === decSA.toLowerCase().trim();
+                const color = isCorrect ? '#16a34a' : '#ef4444';
+                
+                const div = document.createElement('div');
+                div.style.marginBottom = '15px';
+                div.style.padding = '10px';
+                div.style.background = 'white';
+                div.style.borderRadius = '6px';
+                div.style.border = `1px solid ${color}`;
+                
+                div.innerHTML = `
+                    <p style="margin: 0 0 5px 0;"><strong>Soal ${i + 1}:</strong> ${decQ}</p>
+                    <p style="margin: 0 0 5px 0; color: #16a34a;"><strong>Kunci Jawaban:</strong> ${decA}</p>
+                    <p style="margin: 0; color: ${color};"><strong>Jawaban Anda:</strong> ${decSA}</p>
+                `;
+                decContainer.appendChild(div);
+            });
+
+            decContainer.classList.remove('hidden');
+            document.getElementById('card-decrypt-result').style.display = 'none';
+
+        } catch (e) {
+            alert("Kunci Privat salah atau bukan angka yang valid!");
         }
-
-        // Correct password
-        const decContainer = document.getElementById('result-decrypted-container');
-        decContainer.innerHTML = '<h4 style="margin-top:0;">Hasil Dekripsi</h4>';
-        
-        encryptedResultData.forEach((data, i) => {
-            const isCorrect = data.a.toLowerCase().trim() === data.sa.toLowerCase().trim();
-            const color = isCorrect ? '#16a34a' : '#ef4444';
-            
-            const div = document.createElement('div');
-            div.style.marginBottom = '15px';
-            div.style.padding = '10px';
-            div.style.background = 'white';
-            div.style.borderRadius = '6px';
-            div.style.border = `1px solid ${color}`;
-            
-            div.innerHTML = `
-                <p style="margin: 0 0 5px 0;"><strong>Soal ${i + 1}:</strong> ${data.q}</p>
-                <p style="margin: 0 0 5px 0; color: #16a34a;"><strong>Kunci Jawaban:</strong> ${data.a}</p>
-                <p style="margin: 0; color: ${color};"><strong>Jawaban Anda:</strong> ${data.sa}</p>
-            `;
-            decContainer.appendChild(div);
-        });
-
-        decContainer.classList.remove('hidden');
     });
 
     loadState();
