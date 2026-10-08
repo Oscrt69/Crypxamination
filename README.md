@@ -22,7 +22,9 @@ Crypxamination adalah aplikasi web sederhana untuk mempelajari alur enkripsi dan
 - Mengenkripsi soal dan jawaban, lalu melihat ciphertext serta log perhitungan.
 - Halaman Ujian khusus (`exam.html`) bagi Murid untuk menjawab soal.
 - Enkripsi hasil ujian (Soal, Kunci Jawaban, dan Jawaban Murid) setelah selesai.
-- Sistem **Kata Sandi 6 Digit** per mata pelajaran (diatur oleh Guru) untuk mendekripsi hasil ujian Murid.
+- Sistem **2 Lapis Kata Sandi 6 Digit** per mata pelajaran (diatur oleh Guru):
+  - **Sandi Buka Soal:** Digunakan murid untuk melihat soal asli saat mengerjakan ujian.
+  - **Sandi Buka Hasil:** Digunakan untuk mendekripsi nilai/hasil ujian.
 
 ## Menjalankan aplikasi
 
@@ -44,7 +46,7 @@ Kemudian buka `http://localhost:8000`.
 2. **Input Soal & Jawaban:** tambahkan mata pelajaran, isi satu atau beberapa pasangan soal-jawaban, lalu tekan **Enkripsi Semua Soal & Jawaban**.
 3. **Dekripsi & Hasil:** pilih mata pelajaran dan tekan tombol dekripsi untuk melihat kembali teks serta log operasi.
 
-Saat mengenkripsi, aplikasi menggabungkan tiap soal dan jawaban dengan pemisah `@`, dan pasangan berikutnya dengan pemisah `|`. Log memperlihatkan operasi RSA untuk setiap karakter.
+Saat mengenkripsi, aplikasi menggabungkan tiap soal dan jawaban dengan pemisah `_=_SEP_QNA_=_`, dan pasangan berikutnya dengan pemisah `_=_SEP_ITEM_=_` untuk mencegah error saat pengguna memasukkan karakter khusus. Log memperlihatkan operasi RSA untuk setiap karakter.
 
 ## Gambaran algoritma
 
@@ -102,17 +104,15 @@ Pengujian dilakukan dengan menjalankan fungsi di `rsa.js` (pembangkitan kunci, e
 | 2  | p=61, q=53, teks berisi soal dan jawaban | Dekripsi sama dengan teks asli                                | Sesuai                                                           |
 | 3  | p=5, q=7 (n=35), teks `Halo`             | Dekripsi sama dengan teks asli                                | **Gagal**: kode ASCII lebih besar dari n                         |
 | 4  | p=11, q=11, teks `Halo`                  | Dekripsi sama dengan teks asli                                | **Gagal**: p = q membuat φ(n) salah                              |
-| 5  | p=11, q=13, teks `Café`                  | Dekripsi sama dengan teks asli                                | **Gagal**: `é` (kode 233) lebih besar dari n=143, terbaca `CafZ` |
+| 5  | p=251, q=257, teks `Café`                  | Dekripsi sama dengan teks asli                                | Sesuai (karena n = 64507 > 233)                                  |
  
-Kasus 3 sampai 5 adalah keterbatasan yang diketahui (lihat bagian Batasan dan keamanan).
+Kasus 3 dan 4 adalah keterbatasan matematis RSA yang diketahui (lihat bagian Batasan dan keamanan). Kasus batas nilai ASCII (Kasus 5) telah diperbaiki dengan menaikkan rentang acak minimum.
 
 ## Batasan dan keamanan
 
-- Nilai prima acak dibatasi pada rentang 11–97. Ukuran ini hanya memadai untuk demonstrasi; jangan gunakan kunci yang dihasilkan untuk keamanan nyata.
-- RSA diimplementasikan secara langsung per kode karakter tanpa padding kriptografis. Cara ini tidak aman untuk penggunaan produksi.
-- Agar pemulihan karakter benar, nilai modulus `n` harus lebih besar daripada kode karakter yang dienkripsi. Prima acak yang kecil dapat membuat karakter tertentu (termasuk sebagian karakter Unicode) tidak dapat dipulihkan dengan benar.
-- Pemisah `@` dan `|` merupakan bagian dari format data; penggunaannya di dalam teks dapat mengganggu tampilan hasil dekripsi.
-- Data soal, jawaban, ciphertext, serta kunci disimpan di `localStorage` pada browser yang sama. Penyimpanan tersebut bukan penyimpanan terenkripsi dan tidak disinkronkan antarperangkat.
+- Nilai prima acak dibatasi pada rentang 250–999. Ukuran ini cukup untuk mencakup nilai ASCII/Unicode teks, tapi hanya memadai untuk demonstrasi; jangan gunakan kunci yang dihasilkan untuk keamanan nyata.
+- RSA diimplementasikan secara langsung per kode karakter tanpa padding kriptografis. Cara ini tidak aman untuk penggunaan produksi (rentan *frequency analysis*).
+- Data soal, jawaban, ciphertext, serta kunci disimpan di `localStorage` pada browser dan state dasar (Supabase). Penyimpanan lokal dibuat spesifik per-email agar tidak tertukar, namun tetap tidak disarankan untuk data sensitif sesungguhnya.
 - Untuk aplikasi ujian sungguhan, gunakan pustaka kriptografi tepercaya, manajemen kunci yang aman, skema enkripsi yang sesuai, dan evaluasi keamanan profesional.
 
 ## Cakupan

@@ -90,8 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             
             div.innerHTML = `
                 <p style="margin: 0 0 5px 0; font-size: 14px; word-break: break-all;"><strong>Soal ${i + 1}:</strong> <span style="color: #64748b;">${data.encQ}</span></p>
-                <p style="margin: 0 0 5px 0; font-size: 14px; word-break: break-all;"><strong>Kunci Jawaban:</strong> <span style="color: #64748b;">${data.encA}</span></p>
-                <p style="margin: 0; font-size: 14px; word-break: break-all;"><strong>Jawaban Anda:</strong> <span style="color: #64748b;">${data.encSA}</span></p>
+                <p style="margin: 0; font-size: 14px; word-break: break-all;"><strong>Kunci Jawaban:</strong> <span style="color: #64748b;">${data.encA}</span></p>
             `;
             resultContainer.appendChild(div);
         });
@@ -110,7 +109,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         // Cek apakah sudah mengerjakan dan ciphertext sama (soal belum diubah)
-        const savedResultStr = localStorage.getItem(`examFinished_${activeSubject}`);
+        const savedResultStr = localStorage.getItem(`examFinished_${activeSubject}_${userEmail}`);
         if (savedResultStr) {
             try {
                 const savedData = JSON.parse(savedResultStr);
@@ -120,10 +119,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     renderEncryptedResult();
                     return;
                 } else {
-                    localStorage.removeItem(`examFinished_${activeSubject}`);
+                    localStorage.removeItem(`examFinished_${activeSubject}_${userEmail}`);
                 }
             } catch (e) {
-                localStorage.removeItem(`examFinished_${activeSubject}`);
+                localStorage.removeItem(`examFinished_${activeSubject}_${userEmail}`);
             }
         }
 
@@ -133,22 +132,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             const result = decryptMessage(cipher, privateKey.d, privateKey.n);
             const plaintext = result.plaintext;
             
-            if (plaintext.includes('|') || plaintext.includes('@')) {
-                const items = plaintext.split('|');
+            if (plaintext.includes('_=_SEP_ITEM_=_') || plaintext.includes('_=_SEP_QNA_=_')) {
+                const items = plaintext.split('_=_SEP_ITEM_=_');
                 const container = document.getElementById('exam-questions-container');
                 container.innerHTML = '';
                 
+                currentQuestions = [];
+                currentAnswers = [];
+
                 items.forEach((item, i) => {
-                    const [q, a] = item.split('@');
+                    const [q, a] = item.split('_=_SEP_QNA_=_');
                     currentQuestions.push(q);
                     currentAnswers.push(a);
+
+                    // Encrypt the question to show by default
+                    const encQ = encryptMessage(q, publicKey.e, publicKey.n).ciphertext;
 
                     const div = document.createElement('div');
                     div.style.marginBottom = '20px';
                     div.style.borderBottom = '1px dashed #cbd5e1';
                     div.style.paddingBottom = '15px';
                     div.innerHTML = `
-                        <p style="margin-bottom: 10px; font-weight: 500;"><strong>Soal ${i + 1}:</strong> ${q || '-'}</p>
+                        <p style="margin-bottom: 10px; font-weight: 500;">
+                            <strong>Soal ${i + 1}:</strong> 
+                            <span id="soal-display-${i}" style="word-break: break-all; color: #64748b;">${encQ}</span>
+                        </p>
                         <div>
                             <label style="font-size: 13px; font-weight: 600; color: #475569;">Jawaban Anda:</label>
                             <textarea class="student-answer-input" data-index="${i}" rows="3" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 6px;"></textarea>
@@ -202,9 +210,34 @@ document.addEventListener('DOMContentLoaded', async () => {
             ciphertext: subjects[activeSubject].encryptionResult.ciphertext,
             results: encryptedResultData
         };
-        localStorage.setItem(`examFinished_${activeSubject}`, JSON.stringify(dataToSave));
+        localStorage.setItem(`examFinished_${activeSubject}_${userEmail}`, JSON.stringify(dataToSave));
         
         renderEncryptedResult();
+    });
+
+    document.getElementById('btn-decrypt-soal')?.addEventListener('click', () => {
+        const pwd = document.getElementById('input-decrypt-soal-password').value.trim();
+        const subjectData = subjects[activeSubject];
+        
+        if (!pwd) return alert("Masukkan kata sandi terlebih dahulu.");
+        if (!subjectData.passwordSoal) return alert("Guru belum mengatur kata sandi soal untuk mata pelajaran ini.");
+        
+        if (pwd !== subjectData.passwordSoal) {
+            return alert("Kata sandi salah!");
+        }
+
+        // Correct password
+        currentQuestions.forEach((q, i) => {
+            const el = document.getElementById(`soal-display-${i}`);
+            if(el) {
+                el.innerText = q || '-';
+                el.style.wordBreak = 'normal';
+                el.style.color = 'inherit';
+            }
+        });
+
+        // Hide the decrypt question card
+        document.getElementById('card-decrypt-soal').style.display = 'none';
     });
 
     document.getElementById('btn-decrypt-result').addEventListener('click', () => {
