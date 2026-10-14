@@ -53,11 +53,11 @@
         <div class="step-nav" style="grid-template-columns: repeat(3, 1fr);">
             <button class="step-btn active" data-target="step1">
                 <span class="step-num">1</span>
-                <span class="step-label">Pembangkitan Kunci</span>
+                <span class="step-label">Input Soal & Jawaban</span>
             </button>
             <button class="step-btn" data-target="step2" id="nav-step2" disabled>
                 <span class="step-num">2</span>
-                <span class="step-label">Input Soal & Jawaban</span>
+                <span class="step-label">Enkripsi Per-Siswa</span>
             </button>
             <button class="step-btn" data-target="step3" id="nav-step3" disabled>
                 <span class="step-num">3</span>
@@ -65,73 +65,11 @@
             </button>
         </div>
 
-        <!-- Section 1: Pembangkitan Kunci -->
+        <!-- Section 1: Input Soal & Jawaban -->
         <section id="step1" class="step-content active">
             <div class="section-header">
-                <h2>Pembangkitan Kunci RSA</h2>
-                <p>Tentukan dua bilangan prima untuk membangkitkan Kunci Publik dan Kunci Privat.</p>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <div class="card-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
-                    </div>
-                    <div class="card-title">
-                        <h3>Parameter Prima</h3>
-                        <p>Masukkan bilangan p dan q</p>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="input-row">
-                        <div class="input-group">
-                            <label>Bilangan Prima (p)</label>
-                            <input type="number" id="input-p" value="251" placeholder="Misal: 251">
-                        </div>
-                        <div class="input-group">
-                            <label>Bilangan Prima (q)</label>
-                            <input type="number" id="input-q" value="257" placeholder="Misal: 257">
-                        </div>
-                    </div>
-                    <div class="action-row">
-                        <button class="btn btn-outline" id="btn-generate-primes">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-2.36"></path></svg>
-                            Acak P & Q
-                        </button>
-                        <button class="btn btn-primary" id="btn-generate-keys">Bangkitkan Kunci</button>
-                    </div>
-
-                    <div id="keygen-results" class="results-box hidden">
-                        <div class="alert alert-success">
-                            Kunci berhasil dibangkitkan! Silakan lanjut ke tahap berikutnya.
-                        </div>
-                        <div class="key-details">
-                            <div class="key-box">
-                                <h4>Kunci Publik <span>(e, n)</span></h4>
-                                <div class="key-value" id="val-pub">(-, -)</div>
-                                <p class="key-desc">e = <span id="val-e"></span>, n = <span id="val-n"></span></p>
-                            </div>
-                            <div class="key-box">
-                                <h4>Kunci Privat <span>(d, n)</span></h4>
-                                <div class="key-value" id="val-priv">(-, -)</div>
-                                <p class="key-desc">d = <span id="val-d"></span>, n = <span id="val-n2"></span></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 2: Enkripsi Soal & Jawaban -->
-        <section id="step2" class="step-content">
-            <div class="section-header">
                 <h2>Input Soal & Jawaban Ujian</h2>
-                <p>Masukkan soal beserta jawabannya sekaligus, lalu enkripsi ke dalam satu kesatuan ciphertext.</p>
-            </div>
-
-            <div class="alert alert-success" id="alert-pubkey">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                Menggunakan Kunci Publik: <strong id="disp-pubkey"></strong>
+                <p>Masukkan soal beserta jawabannya. Setelah selesai, lanjut ke tahap Enkripsi Per-Siswa.</p>
             </div>
 
             <!-- Mata Pelajaran Card -->
@@ -171,31 +109,74 @@
                     <div id="qna-container">
                         <!-- QnA items generated here -->
                     </div>
-                    <div class="action-row mt-4">
+                    <div class="action-row mt-4" style="display: flex; gap: 10px;">
                         <button class="btn btn-outline" id="btn-add-qna">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                             Tambah Soal Baru
                         </button>
-                        <button class="btn btn-primary" id="btn-encrypt-qna">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>
-                            Enkripsi Semua Soal & Jawaban
+                        <button class="btn btn-primary" id="btn-save-qna">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                            Simpan Soal
                         </button>
                     </div>
+                </div>
+            </div>
+        </section>
 
-                    <div id="encrypt-results" class="results-box hidden">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                            <h4 style="margin: 0;">Hasil Enkripsi (Ciphertext)</h4>
-                            <div class="filter-group filter-encrypt">
-                                <button class="btn btn-sm btn-primary filter-btn-enc active" data-filter="semua">Semua</button>
-                                <button class="btn btn-sm btn-outline filter-btn-enc" data-filter="soal">Soal</button>
-                                <button class="btn btn-sm btn-outline filter-btn-enc" data-filter="jawaban">Jawaban</button>
-                            </div>
+        <!-- Section 2: Enkripsi Per-Siswa (PKI) -->
+        <section id="step2" class="step-content">
+            <div class="section-header">
+                <h2>Enkripsi Per-Siswa (PKI)</h2>
+                <p>Enkripsi soal menggunakan Kunci Publik masing-masing siswa. Setiap siswa akan mendapatkan ciphertext unik yang hanya bisa didekripsi oleh Kunci Privat milik siswa tersebut.</p>
+            </div>
+
+            <!-- Pilih Mata Pelajaran untuk Enkripsi -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="card-icon bg-blue-100">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                    </div>
+                    <div class="card-title">
+                        <h3>Pilih Mata Pelajaran</h3>
+                        <p>Pilih mata pelajaran yang ingin dienkripsi per-siswa</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <label>Mata Pelajaran</label>
+                        <select id="select-subject-encrypt-pki" style="width: 100%; padding: 10px; border-radius: var(--radius); border: 1px solid var(--border); outline: none; background: white;">
+                            <option value="">-- Pilih Mata Pelajaran --</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daftar Siswa yang Mendaftar -->
+            <div class="card mb-4" id="card-student-keys" style="display: none;">
+                <div class="card-header">
+                    <div class="card-icon bg-green-100">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <div class="card-title">
+                        <h3>Kunci Publik Siswa Terdaftar</h3>
+                        <p>Daftar siswa yang sudah men-generate dan mendaftarkan Kunci Publik mereka.</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="student-keys-list">
+                        <!-- Student keys will be rendered here -->
+                    </div>
+                    <button class="btn btn-primary mt-4" id="btn-encrypt-per-student" style="width: 100%;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0110 0v4"></path></svg>
+                        Enkripsi Soal untuk Semua Siswa
+                    </button>
+
+                    <div id="encrypt-pki-results" class="results-box hidden">
+                        <div class="alert alert-success">
+                            Soal berhasil dienkripsi untuk setiap siswa menggunakan Kunci Publik masing-masing!
                         </div>
-                        <textarea id="output-ciphertext" rows="4" readonly class="bg-light"></textarea>
-                        
-                        <div class="mt-4">
-                            <h4>Log Operasi Matematis (C = M^e mod n)</h4>
-                            <pre class="log-box" id="log-encrypt"></pre>
+                        <div id="per-student-ciphertext-list">
+                            <!-- Per-student ciphertexts will be rendered here -->
                         </div>
                     </div>
                 </div>
@@ -207,6 +188,65 @@
             <div class="section-header" id="step3-header">
                 <h2>Dekripsi Soal & Ujian</h2>
                 <p>Gunakan Kunci Privat untuk mendekripsi soal. Setelah itu, kerjakan ujian dan enkripsi jawaban Anda sebelum dikumpulkan.</p>
+            </div>
+
+            <!-- Student Keygen (Murid Only) -->
+            <div class="card mb-4" id="card-murid-keygen" style="display: none; border-color: #3b82f6;">
+                <div class="card-header">
+                    <div class="card-icon bg-blue-100">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path></svg>
+                    </div>
+                    <div class="card-title">
+                        <h3>Langkah 1: Kunci RSA Anda</h3>
+                        <p>Anda harus memiliki Kunci Publik yang terdaftar agar guru dapat mengirimkan soal untuk Anda.</p>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="murid-keygen-form">
+                        <div class="input-row" style="display: flex; gap: 15px; margin-bottom: 15px;">
+                            <div class="input-group" style="flex: 1;">
+                                <label>Bilangan Prima (p)</label>
+                                <input type="number" id="input-student-p" value="251" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            </div>
+                            <div class="input-group" style="flex: 1;">
+                                <label>Bilangan Prima (q)</label>
+                                <input type="number" id="input-student-q" value="257" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            </div>
+                        </div>
+                        <div class="action-row" style="display: flex; gap: 10px;">
+                            <button class="btn btn-outline" id="btn-student-random-primes">Acak P & Q</button>
+                            <button class="btn btn-primary" id="btn-student-generate-keys">Bangkitkan Kunci</button>
+                        </div>
+                    </div>
+
+                    <div id="student-keygen-results" class="results-box hidden mt-4">
+                        <div class="alert alert-success" style="margin-bottom: 15px;">Kunci berhasil dibangkitkan!</div>
+                        <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                            <div style="flex: 1; padding: 15px; border: 1px solid #cbd5e1; border-radius: 6px;">
+                                <h4 style="margin: 0 0 10px 0;">Kunci Publik <span style="font-size: 12px; color: #64748b;">(e, n)</span></h4>
+                                <div id="student-val-pub" style="font-family: monospace; font-size: 16px;">(-, -)</div>
+                            </div>
+                            <div style="flex: 1; padding: 15px; border: 1px solid #ef4444; border-radius: 6px; background: #fef2f2;">
+                                <h4 style="margin: 0 0 10px 0; color: #ef4444;">Kunci Privat <span style="font-size: 12px; color: #ef4444;">(d, n)</span></h4>
+                                <div id="student-val-priv" style="font-family: monospace; font-size: 16px; color: #ef4444;">(-, -)</div>
+                            </div>
+                        </div>
+                        <button class="btn btn-success" id="btn-register-pubkey" style="width: 100%;">Daftarkan Kunci Publik Ini</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kartu Status Kunci Murid (Jika sudah ada) -->
+            <div class="card mb-4" id="card-murid-has-keys" style="display: none; border-color: #16a34a;">
+                <div class="card-body" style="padding: 15px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h4 style="margin: 0; color: #16a34a;">Status: Kunci Publik Terdaftar ✓</h4>
+                            <p style="margin: 5px 0 0 0; font-size: 13px; color: #64748b;">Kunci Publik Anda <strong id="disp-reg-pubkey" style="font-family: monospace;"></strong> sudah terdaftar. Lanjut ke Langkah 2 di bawah.</p>
+                        </div>
+                        <button class="btn btn-sm btn-outline" id="btn-show-keygen-again" style="border-color: #ef4444; color: #ef4444;">Buat Ulang Kunci</button>
+                    </div>
+                </div>
             </div>
 
             <div class="alert alert-warning" id="alert-privkey">
@@ -270,14 +310,7 @@
                         <button class="btn btn-warning" id="btn-decrypt-qna">Dekripsi Buka Soal Ujian</button>
                         
                         <div id="decrypt-qna-results" class="results-box hidden">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                <h4 style="margin: 0;">Log Operasi Matematis Dekripsi (M = C^d mod n)</h4>
-                                <div class="filter-group filter-decrypt">
-                                    <button class="btn btn-sm btn-primary filter-btn-dec active" data-filter="semua">Semua</button>
-                                    <button class="btn btn-sm btn-outline filter-btn-dec" data-filter="soal">Soal</button>
-                                </div>
-                            </div>
-                            <pre class="log-box" id="log-decrypt-qna"></pre>
+
 
                             <h4 class="mt-4">Lembar Ujian / Kunci Jawaban</h4>
                             <div class="plaintext-display" id="output-plaintext-qna"></div>

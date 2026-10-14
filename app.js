@@ -14,9 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 2. Terapkan Pembatasan Akses (Role-Based Access Control) ---
     if (userRole === 'murid') {
-        // Murid HANYA boleh melihat Step 3 (Dekripsi)
+        // Murid HANYA boleh melihat Step 3 (Dekripsi/Ujian)
         document.querySelector('.step-nav').style.display = 'none';
-        document.getElementById('step3-header').style.display = 'none';
+        document.getElementById('step3-header').style.display = 'block';
+        document.getElementById('step3-header').querySelector('h2').innerText = 'Dashboard Murid';
+        document.getElementById('step3-header').querySelector('p').innerText = 'Langkah 1: Kelola Kunci RSA. Langkah 2: Pilih Mata Pelajaran.';
         document.getElementById('alert-privkey').style.display = 'none';
         
         // Pindahkan tampilan awal langsung ke Step 3
@@ -27,13 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const btnStep3 = document.querySelector('[data-target="step3"]');
             btnStep3.classList.add('active');
             btnStep3.disabled = false;
-        }, 100); // timeout kecil memastikan DOM render selesai
+        }, 100);
     }
 
     // --- 3. Logika Logout ---
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
-        // Tampilkan email user yang sedang login
         const emailDisplay = document.getElementById('user-email-display');
         if(emailDisplay) emailDisplay.innerText = `${userEmail} (${userRole})`;
 
@@ -45,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 4. Navigation Handling Bawaan Aplikasi ---
+    // --- 4. Navigation Handling ---
     const navBtns = document.querySelectorAll('.step-btn');
     const sections = document.querySelectorAll('.step-content');
 
@@ -77,6 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderLogBox(elementId, logArray) {
         const el = document.getElementById(elementId);
+        if (!el) return;
         if (logArray.length <= 5) {
             el.innerHTML = logArray.join('\n');
         } else {
@@ -91,25 +93,94 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- State Variables ---
-    let publicKey = null;
-    let privateKey = null;
     let subjects = {};
     let activeSubject = null;
+    let studentKeys = {}; // { email: { publicKey: {e, n}, registeredAt } }
+
+    function checkStudentKeyStatus() {
+        if (userRole !== 'murid') return;
+        
+        if (studentKeys && studentKeys[userEmail]) {
+            document.getElementById('card-murid-keygen').style.display = 'none';
+            document.getElementById('card-murid-has-keys').style.display = 'block';
+            const pk = studentKeys[userEmail].publicKey;
+            document.getElementById('disp-reg-pubkey').innerText = `(${pk.e}, ${pk.n})`;
+        } else {
+            document.getElementById('card-murid-keygen').style.display = 'block';
+            document.getElementById('card-murid-has-keys').style.display = 'none';
+        }
+    }
+
+    // Keygen Logic for Dashboard Murid
+    const btnRandomPrimes = document.getElementById('btn-student-random-primes');
+    const btnGenerateKeys = document.getElementById('btn-student-generate-keys');
+    const btnRegisterPubkey = document.getElementById('btn-register-pubkey');
+    const btnShowKeygenAgain = document.getElementById('btn-show-keygen-again');
+
+    btnRandomPrimes?.addEventListener('click', () => {
+        document.getElementById('input-student-p').value = generatePrime(250, 999);
+        let q = generatePrime(250, 999);
+        while (q == document.getElementById('input-student-p').value) q = generatePrime(250, 999);
+        document.getElementById('input-student-q').value = q;
+    });
+
+    btnGenerateKeys?.addEventListener('click', () => {
+        const p = parseInt(document.getElementById('input-student-p').value);
+        const q = parseInt(document.getElementById('input-student-q').value);
+        if (!p || !q) return alert("Masukkan p dan q");
+        if (!isPrime(BigInt(p)) || !isPrime(BigInt(q))) return alert("⚠️ p dan q HARUS merupakan Bilangan Prima!\n\nJika p dan q bukan bilangan prima, maka rumus dekripsi (membuka gembok) akan gagal secara matematis dan hanya menghasilkan karakter acak (gibberish).");
+        if (p === q) return alert("p dan q tidak boleh sama!");
+        
+        try {
+            const keys = generateKeys(p, q);
+            document.getElementById('student-val-pub').innerText = `(${keys.e}, ${keys.n})`;
+            document.getElementById('student-val-priv').innerText = `(${keys.d}, ${keys.n})`;
+            document.getElementById('student-keygen-results').classList.remove('hidden');
+            
+            btnRegisterPubkey.dataset.e = keys.e;
+            btnRegisterPubkey.dataset.n = keys.n;
+            btnRegisterPubkey.dataset.d = keys.d;
+        } catch (e) { alert("Error: " + e.message); }
+    });
+
+    btnRegisterPubkey?.addEventListener('click', () => {
+        const e = btnRegisterPubkey.dataset.e;
+        const n = btnRegisterPubkey.dataset.n;
+        const d = btnRegisterPubkey.dataset.d;
+        if (!e || !n) return;
+        
+        if (!studentKeys) studentKeys = {};
+        studentKeys[userEmail] = {
+            publicKey: { e, n },
+            registeredAt: new Date().toISOString()
+        };
+        
+        localStorage.setItem(`myKeys_${userEmail}`, JSON.stringify({ e, n, d }));
+        saveState();
+        
+        alert("Kunci Publik berhasil didaftarkan!\nKunci Privat Anda juga telah disimpan di browser ini.");
+        checkStudentKeyStatus();
+    });
+
+    btnShowKeygenAgain?.addEventListener('click', () => {
+        if (confirm("⚠️ PERINGATAN: Jika Anda mendaftarkan kunci baru, soal ujian yang sudah dienkripsi dengan kunci lama tidak akan bisa dibuka. Lanjutkan?")) {
+            document.getElementById('card-murid-has-keys').style.display = 'none';
+            document.getElementById('card-murid-keygen').style.display = 'block';
+        }
+    });
 
     // --- State Persistence ---
     function saveState() {
         const state = {
-            publicKey,
-            privateKey,
             subjects,
-            activeSubject
+            activeSubject,
+            studentKeys
         };
         const serialized = JSON.stringify(state, (key, value) => 
             typeof value === 'bigint' ? { __type: 'bigint', value: value.toString() } : value
         );
         localStorage.setItem('crypxaminationState', serialized);
 
-        // Sinkronisasi ke Supabase
         supabase.from('app_state')
             .upsert({ id: 1, data: serialized })
             .then(({error}) => {
@@ -122,12 +193,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadState() {
         try {
-            // Ambil dari Supabase
             const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).single();
             
             let saved = data?.data;
             
-            // Fallback ke local jika kosong
             if (!saved || saved === '{}' || (typeof saved === 'object' && Object.keys(saved).length === 0)) {
                 saved = localStorage.getItem('crypxaminationState');
             }
@@ -142,7 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         return value;
                     });
                 } else {
-                    // Jika dari Supabase sudah berupa object (JSONB)
                     parsed = JSON.parse(JSON.stringify(saved), (key, value) => {
                         if (value && typeof value === 'object' && value.__type === 'bigint') {
                             return BigInt(value.value);
@@ -151,130 +219,31 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 
-                if (parsed.publicKey) publicKey = parsed.publicKey;
-                if (parsed.privateKey) privateKey = parsed.privateKey;
                 if (parsed.subjects) subjects = parsed.subjects;
                 if (parsed.activeSubject) activeSubject = parsed.activeSubject;
+                if (parsed.studentKeys) studentKeys = parsed.studentKeys;
                 
-                // Restore Step 1 UI
-                if (publicKey && privateKey) {
-                    document.getElementById('val-pub').innerText = `(${publicKey.e}, ${publicKey.n})`;
-                    document.getElementById('val-priv').innerText = `(${privateKey.d}, ${privateKey.n})`;
-                    document.getElementById('val-e').innerText = publicKey.e;
-                    document.getElementById('val-n').innerText = publicKey.n;
-                    document.getElementById('val-d').innerText = privateKey.d;
-                    document.getElementById('val-n2').innerText = privateKey.n;
-                    
-                    document.getElementById('disp-pubkey').innerText = `(e=${publicKey.e}, n=${publicKey.n})`;
-                    document.getElementById('disp-privkey').innerText = `(d=${privateKey.d}, n=${privateKey.n})`;
-
-                    document.getElementById('keygen-results').classList.remove('hidden');
-
-                    document.getElementById('nav-step2').disabled = false;
-                    document.getElementById('nav-step3').disabled = false;
-                }
-                
-                // Restore Step 2 & 3 UI
+                // Restore UI
                 renderSubjects();
                 if (activeSubject) {
                     renderQnA();
-                    renderEncryptionResult();
                 }
-                updateDropdowns();
+                updatePKIDropdown();
+                updateStep3Dropdown();
+                checkStudentKeyStatus();
                 
+                // Enable steps if there are subjects with QnA
+                if (Object.keys(subjects).length > 0) {
+                    document.getElementById('nav-step2').disabled = false;
+                    document.getElementById('nav-step3').disabled = false;
+                }
             }
         } catch (e) {
             console.error("Gagal memuat state", e);
         }
     }
 
-    // Step 1: Pembangkitan Kunci
-    document.getElementById('btn-generate-primes').addEventListener('click', () => {
-        const pInput = document.getElementById('input-p');
-        const qInput = document.getElementById('input-q');
-        
-        pInput.value = generatePrime(250, 999); 
-        let q = generatePrime(250, 999);
-        while (q == pInput.value) q = generatePrime(250, 999);
-        qInput.value = q;
-    });
-
-    document.getElementById('btn-generate-keys').addEventListener('click', () => {
-        const p = parseInt(document.getElementById('input-p').value);
-        const q = parseInt(document.getElementById('input-q').value);
-
-        if (!p || !q) return alert("Masukkan p dan q");
-        if (!isPrime(BigInt(p)) || !isPrime(BigInt(q))) return alert("p dan q harus bilangan prima!");
-
-        try {
-            const keys = generateKeys(p, q);
-            publicKey = keys.publicKey;
-            privateKey = keys.privateKey;
-
-            // Reset data yang sudah terenkripsi dengan kunci lama
-            Object.keys(subjects).forEach(sub => {
-                subjects[sub].encryptionResult = null;
-                subjects[sub].decryptResult = null;
-            });
-            renderEncryptionResult();
-            updateDropdowns();
-
-            document.getElementById('val-pub').innerText = `(${keys.e}, ${keys.n})`;
-            document.getElementById('val-priv').innerText = `(${keys.d}, ${keys.n})`;
-            document.getElementById('val-e').innerText = keys.e;
-            document.getElementById('val-n').innerText = keys.n;
-            document.getElementById('val-d').innerText = keys.d;
-            document.getElementById('val-n2').innerText = keys.n;
-            
-            document.getElementById('disp-pubkey').innerText = `(e=${keys.e}, n=${keys.n})`;
-            document.getElementById('disp-privkey').innerText = `(d=${privateKey.d}, n=${privateKey.n})`;
-
-            document.getElementById('keygen-results').classList.remove('hidden');
-
-            document.getElementById('nav-step2').disabled = false;
-            document.getElementById('nav-step3').disabled = false;
-            
-            saveState();
-        } catch (e) {
-            alert("Error: " + e.message);
-        }
-    });
-
-    // --- Filter State ---
-    let encryptFilter = 'semua';
-    let decryptFilter = 'semua';
-
-    document.querySelectorAll('.filter-btn-enc').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter-btn-enc').forEach(b => {
-                b.classList.remove('btn-primary');
-                b.classList.add('btn-outline');
-            });
-            e.target.classList.remove('btn-outline');
-            e.target.classList.add('btn-primary');
-            encryptFilter = e.target.dataset.filter;
-            renderEncryptionResult();
-        });
-    });
-
-    document.querySelectorAll('.filter-btn-dec').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            document.querySelectorAll('.filter-btn-dec').forEach(b => {
-                b.classList.remove('btn-primary');
-                b.classList.add('btn-outline');
-            });
-            e.target.classList.remove('btn-outline');
-            e.target.classList.add('btn-primary');
-            decryptFilter = e.target.dataset.filter;
-            
-            const sub = document.getElementById('select-subject-decrypt').value;
-            if (sub && subjects[sub] && subjects[sub].decryptResult) {
-                renderDecryptLog(sub);
-            }
-        });
-    });
-
-    // --- Step 2 UI Logic ---
+    // --- Step 1 UI Logic: Input Soal ---
     const inputSubject = document.getElementById('input-subject');
     const btnAddSubject = document.getElementById('btn-add-subject');
     const subjectList = document.getElementById('subject-list');
@@ -282,15 +251,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const titleSoalMapel = document.getElementById('title-soal-mapel');
     const qnaContainer = document.getElementById('qna-container');
     const btnAddQnA = document.getElementById('btn-add-qna');
+    const btnSaveQnA = document.getElementById('btn-save-qna');
 
-    function updateDropdowns() {
+    function updatePKIDropdown() {
+        const select = document.getElementById('select-subject-encrypt-pki');
+        if (!select) return;
+        const currentVal = select.value;
+        select.innerHTML = '<option value="">-- Pilih Mata Pelajaran --</option>';
+        
+        Object.keys(subjects).forEach(sub => {
+            if (subjects[sub].qna && subjects[sub].qna.some(item => item.q.trim() !== '' || item.a.trim() !== '')) {
+                const opt = document.createElement('option');
+                opt.value = sub;
+                opt.innerText = sub;
+                select.appendChild(opt);
+            }
+        });
+
+        if (currentVal && select.querySelector(`option[value="${currentVal}"]`)) {
+            select.value = currentVal;
+        }
+    }
+
+    function updateStep3Dropdown() {
         const selectDecrypt = document.getElementById('select-subject-decrypt');
+        if (!selectDecrypt) return;
         const currentVal = selectDecrypt.value;
         
         selectDecrypt.innerHTML = '<option value="">-- Pilih Mata Pelajaran --</option>';
         
         Object.keys(subjects).forEach(sub => {
-            if (subjects[sub].encryptionResult) {
+            if (subjects[sub].qna && subjects[sub].qna.some(item => item.q.trim() !== '' || item.a.trim() !== '')) {
                 const opt = document.createElement('option');
                 opt.value = sub;
                 opt.innerText = sub;
@@ -298,17 +289,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        if(subjects[currentVal] && subjects[currentVal].encryptionResult) {
+        if (currentVal && selectDecrypt.querySelector(`option[value="${currentVal}"]`)) {
             selectDecrypt.value = currentVal;
-            // Jika ada decryptResult sebelumnya, render lagi
-            if (subjects[currentVal].decryptResult) {
-                document.getElementById('container-dekripsi-qna').style.display = 'block';
-                document.getElementById('input-ciphertext-decrypt').value = subjects[currentVal].encryptionResult.ciphertext;
-                renderPlaintextAndLog(currentVal);
-            }
         }
         
-        // Panggil event untuk me-refresh
         selectDecrypt.dispatchEvent(new Event('change'));
     }
 
@@ -319,19 +303,16 @@ document.addEventListener('DOMContentLoaded', () => {
             pill.className = `pill ${activeSubject === sub ? 'active' : ''}`;
             
             const checkIcon = activeSubject === sub ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="icon-sm"><polyline points="20 6 9 17 4 12"></polyline></svg>` : '';
-            const unencryptedWarning = !subjects[sub].encryptionResult ? `<span style="color: #ef4444; font-size: 11px; margin-left: 5px;" title="Belum dienkripsi dengan kunci saat ini">⚠️</span>` : '';
             
             pill.innerHTML = `
                 ${checkIcon}
                 ${sub}
-                ${unencryptedWarning}
                 <span class="pill-close" data-sub="${sub}">&times;</span>
             `;
             
             pill.addEventListener('click', (e) => {
                 if(e.target.classList.contains('pill-close')) {
                     delete subjects[sub];
-                    // Remove all finished states for this subject across all users
                     Object.keys(localStorage).forEach(key => {
                         if (key.startsWith(`examFinished_${sub}_`)) {
                             localStorage.removeItem(key);
@@ -343,14 +324,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     renderSubjects();
                     renderQnA();
-                    renderEncryptionResult();
-                    updateDropdowns();
+                    updatePKIDropdown();
+                    updateStep3Dropdown();
                     saveState();
                 } else {
                     activeSubject = sub;
                     renderSubjects();
                     renderQnA();
-                    renderEncryptionResult();
                     saveState();
                 }
             });
@@ -363,33 +343,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             cardSoal.style.display = 'none';
         }
-    }
-
-    function renderEncryptionResult() {
-        const resBox = document.getElementById('encrypt-results');
-        if (!activeSubject || !subjects[activeSubject].encryptionResult) {
-            resBox.classList.add('hidden');
-            return;
-        }
-
-        const result = subjects[activeSubject].encryptionResult;
-        const cats = result.charCategories;
-        
-        let filteredCiphertext = [];
-        let filteredLog = [];
-        
-        const cipherArr = result.ciphertext.split(',');
-        
-        for (let i = 0; i < cats.length; i++) {
-            if (encryptFilter === 'semua' || cats[i] === encryptFilter) {
-                filteredCiphertext.push(cipherArr[i]);
-                filteredLog.push(result.log[i]);
-            }
-        }
-        
-        document.getElementById('output-ciphertext').value = filteredCiphertext.join(',');
-        renderLogBox('log-encrypt', filteredLog);
-        resBox.classList.remove('hidden');
     }
 
     function renderQnA() {
@@ -423,26 +376,17 @@ document.addEventListener('DOMContentLoaded', () => {
             
             qInput.addEventListener('input', (e) => {
                 subjects[activeSubject].qna[index].q = e.target.value;
-                subjects[activeSubject].encryptionResult = null;
-                renderEncryptionResult();
-                updateDropdowns();
                 saveState();
             });
             aInput.addEventListener('input', (e) => {
                 subjects[activeSubject].qna[index].a = e.target.value;
-                subjects[activeSubject].encryptionResult = null;
-                renderEncryptionResult();
-                updateDropdowns();
                 saveState();
             });
 
             if(qna.length > 1) {
                 div.querySelector('.btn-remove').addEventListener('click', () => {
                     subjects[activeSubject].qna.splice(index, 1);
-                    subjects[activeSubject].encryptionResult = null;
                     renderQnA();
-                    renderEncryptionResult();
-                    updateDropdowns();
                     saveState();
                 });
             }
@@ -454,13 +398,16 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAddSubject.addEventListener('click', () => {
         const sub = inputSubject.value.trim();
         if (sub && !subjects[sub]) {
-            subjects[sub] = { qna: [{q: "", a: ""}], encryptionResult: null };
+            subjects[sub] = { qna: [{q: "", a: ""}] };
             activeSubject = sub;
             inputSubject.value = '';
             renderSubjects();
             renderQnA();
-            renderEncryptionResult();
-            updateDropdowns();
+            updatePKIDropdown();
+            
+            document.getElementById('nav-step2').disabled = false;
+            document.getElementById('nav-step3').disabled = false;
+            
             saveState();
         }
     });
@@ -468,175 +415,225 @@ document.addEventListener('DOMContentLoaded', () => {
     btnAddQnA.addEventListener('click', () => {
         if(activeSubject) {
             subjects[activeSubject].qna.push({q: "", a: ""});
-            subjects[activeSubject].encryptionResult = null;
             renderQnA();
-            renderEncryptionResult();
-            updateDropdowns();
             saveState();
         }
     });
 
-    // Step 2: Enkripsi Soal & Jawaban
-    document.getElementById('btn-encrypt-qna').addEventListener('click', () => {
-        if (!activeSubject) return;
-        
-        // Filter out empty ones
-        const validQnA = subjects[activeSubject].qna.filter(item => item.q.trim() !== '' || item.a.trim() !== '');
-        
-        if (validQnA.length === 0) return alert("Soal dan jawaban tidak boleh kosong semua!");
-        if (!publicKey) return alert("Kunci belum dibangkitkan!");
+    btnSaveQnA?.addEventListener('click', () => {
+        if(activeSubject) {
+            saveState();
+            updatePKIDropdown();
+            alert("Soal dan jawaban berhasil disimpan!");
+        }
+    });
 
-        // Gabungkan menggunakan delimiter
-        let plainArr = [];
-        let charCategories = [];
+    // --- Step 2: PKI Encryption ---
+    const selectEncryptPKI = document.getElementById('select-subject-encrypt-pki');
+    
+    selectEncryptPKI?.addEventListener('change', (e) => {
+        const sub = e.target.value;
+        const cardStudentKeys = document.getElementById('card-student-keys');
         
+        if (sub && subjects[sub]) {
+            cardStudentKeys.style.display = 'block';
+            renderStudentKeysList(sub);
+        } else {
+            cardStudentKeys.style.display = 'none';
+        }
+    });
+
+    function renderStudentKeysList(sub) {
+        const listContainer = document.getElementById('student-keys-list');
+        listContainer.innerHTML = '';
+        
+        const keys = Object.keys(studentKeys);
+        
+        if (keys.length === 0) {
+            listContainer.innerHTML = `
+                <div style="text-align: center; padding: 20px; color: #64748b;">
+                    <p>Belum ada siswa yang mendaftarkan Kunci Publik mereka.</p>
+                    <p style="font-size: 13px;">Siswa harus membuka halaman ujian dan men-generate kunci terlebih dahulu.</p>
+                </div>
+            `;
+            return;
+        }
+
+        keys.forEach(email => {
+            const sk = studentKeys[email];
+            const encData = subjects[sub]?.encryptedForStudents?.[email];
+            let statusBadge = '';
+            
+            if (encData) {
+                if (encData.publicKeyUsed && (encData.publicKeyUsed.e !== sk.publicKey.e || encData.publicKeyUsed.n !== sk.publicKey.n)) {
+                    statusBadge = `<span style="font-size: 11px; font-weight: bold; padding: 4px 8px; border-radius: 4px; background: #ef4444; color: white;">⚠️ KUNCI BERUBAH (Enkripsi Ulang!)</span>`;
+                } else {
+                    statusBadge = `<span style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background: #dcfce7; color: #16a34a;">✓ Terenkripsi</span>`;
+                }
+            } else {
+                statusBadge = `<span style="font-size: 12px; padding: 4px 8px; border-radius: 4px; background: #fef3c7; color: #ca8a04;">⏳ Menunggu</span>`;
+            }
+
+            const div = document.createElement('div');
+            div.style.cssText = 'padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 10px;';
+            div.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <strong style="color: #1e293b;">${email}</strong>
+                        <p style="margin: 4px 0 0; font-size: 12px; color: #64748b; font-family: monospace;">
+                            Kunci Publik: (e=${sk.publicKey.e}, n=${sk.publicKey.n})
+                        </p>
+                    </div>
+                    ${statusBadge}
+                </div>
+            `;
+            listContainer.appendChild(div);
+        });
+
+        // Show existing per-student results if any
+        if (subjects[sub]?.encryptedForStudents && Object.keys(subjects[sub].encryptedForStudents).length > 0) {
+            renderPerStudentCiphertexts(sub);
+        }
+    }
+
+    function renderPerStudentCiphertexts(sub) {
+        const container = document.getElementById('per-student-ciphertext-list');
+        container.innerHTML = '';
+        
+        const encrypted = subjects[sub].encryptedForStudents;
+        Object.keys(encrypted).forEach(email => {
+            const div = document.createElement('div');
+            div.style.cssText = 'margin-bottom: 12px; padding: 12px; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 6px;';
+            div.innerHTML = `
+                <p style="margin: 0 0 6px; font-weight: 600; color: #0369a1;">${email}</p>
+                <p style="margin: 0; font-size: 12px; font-family: monospace; word-break: break-all; color: #64748b; max-height: 60px; overflow-y: auto;">
+                    ${encrypted[email].ciphertext}
+                </p>
+            `;
+            container.appendChild(div);
+        });
+
+        document.getElementById('encrypt-pki-results').classList.remove('hidden');
+    }
+
+    document.getElementById('btn-encrypt-per-student')?.addEventListener('click', () => {
+        const sub = selectEncryptPKI.value;
+        if (!sub) return alert("Pilih mata pelajaran terlebih dahulu.");
+        
+        const keys = Object.keys(studentKeys);
+        if (keys.length === 0) return alert("Belum ada siswa yang mendaftarkan Kunci Publik!");
+
+        const validQnA = subjects[sub].qna.filter(item => item.q.trim() !== '' || item.a.trim() !== '');
+        if (validQnA.length === 0) return alert("Soal dan jawaban tidak boleh kosong!");
+
+        // Gabungkan soal menjadi satu plaintext
         const DELIM_QNA = "_=_SEP_QNA_=_";
         const DELIM_ITEM = "_=_SEP_ITEM_=_";
         
-        validQnA.forEach((item, index) => {
+        let plainArr = [];
+        validQnA.forEach(item => {
             plainArr.push(`${item.q}${DELIM_QNA}${item.a}`);
-            
-            for(let i=0; i<item.q.length; i++) charCategories.push('soal');
-            for(let i=0; i<DELIM_QNA.length; i++) charCategories.push('separator');
-            for(let i=0; i<item.a.length; i++) charCategories.push('jawaban');
-            
-            if (index < validQnA.length - 1) {
-                for(let i=0; i<DELIM_ITEM.length; i++) charCategories.push('separator');
-            }
         });
-        
         const combinedPlaintext = plainArr.join(DELIM_ITEM);
 
-        const result = encryptMessage(combinedPlaintext, publicKey.e, publicKey.n);
-        result.charCategories = charCategories;
-        subjects[activeSubject].encryptionResult = result;
-        
+        // Enkripsi untuk setiap siswa menggunakan Kunci Publik masing-masing
+        if (!subjects[sub].encryptedForStudents) subjects[sub].encryptedForStudents = {};
+
+        keys.forEach(email => {
+            const studentPubKey = studentKeys[email].publicKey;
+            const result = encryptMessage(combinedPlaintext, studentPubKey.e, studentPubKey.n);
+            
+            subjects[sub].encryptedForStudents[email] = {
+                ciphertext: result.ciphertext,
+                publicKeyUsed: studentPubKey
+            };
+        });
+
         // Bersihkan state selesai murid karena soal baru saja diperbarui
         Object.keys(localStorage).forEach(key => {
-            if (key.startsWith(`examFinished_${activeSubject}_`)) {
+            if (key.startsWith(`examFinished_${sub}_`)) {
                 localStorage.removeItem(key);
             }
         });
-        
-        renderEncryptionResult();
-        updateDropdowns();
+
+        renderStudentKeysList(sub);
+        renderPerStudentCiphertexts(sub);
+        updateStep3Dropdown();
         saveState();
+        
+        alert(`Soal berhasil dienkripsi untuk ${keys.length} siswa!`);
     });
 
     // --- Step 3 UI Logic ---
     const selectDecrypt = document.getElementById('select-subject-decrypt');
     const containerDekripsiQnA = document.getElementById('container-dekripsi-qna');
     
-    selectDecrypt.addEventListener('change', (e) => {
+    selectDecrypt?.addEventListener('change', (e) => {
         const sub = e.target.value;
         
-        if (sub && subjects[sub] && subjects[sub].encryptionResult) {
+        if (sub && subjects[sub]) {
             containerDekripsiQnA.style.display = 'block';
             
             if (userRole === 'guru') {
                 document.getElementById('card-dekripsi-teacher').style.display = 'block';
                 document.getElementById('card-student-confirm').style.display = 'none';
+
+                // Show per-student ciphertexts in teacher view
+                const cipherDisplay = document.getElementById('input-ciphertext-decrypt');
+                const encrypted = subjects[sub].encryptedForStudents || {};
+                const emails = Object.keys(encrypted);
+                if (emails.length > 0) {
+                    cipherDisplay.value = emails.map(e => `[${e}]: ${encrypted[e].ciphertext.substring(0, 80)}...`).join('\n');
+                } else {
+                    cipherDisplay.value = "Belum ada soal yang dienkripsi untuk siswa.";
+                }
             } else if (userRole === 'murid') {
                 document.getElementById('card-dekripsi-teacher').style.display = 'none';
                 document.getElementById('card-student-confirm').style.display = 'block';
-            }
-
-            document.getElementById('input-ciphertext-decrypt').value = subjects[sub].encryptionResult.ciphertext;
-            
-            if (subjects[sub].decryptResult) {
-                renderPlaintextAndLog(sub);
-            } else {
-                document.getElementById('decrypt-qna-results').classList.add('hidden');
             }
         } else {
             containerDekripsiQnA.style.display = 'none';
         }
     });
 
-
-
     document.getElementById('btn-start-exam')?.addEventListener('click', () => {
         const sub = selectDecrypt.value;
         if (!sub) return alert("Pilih mata pelajaran terlebih dahulu.");
         
-        // Save the chosen subject to localStorage so the exam page knows what to load
         localStorage.setItem('activeExamSubject', sub);
         window.location.href = "exam.html";
     });
 
-
-    function renderDecryptLog(sub) {
-        const result = subjects[sub].decryptResult;
-        const cats = subjects[sub].encryptionResult.charCategories;
-        
-        let filteredLog = [];
-        
-        for (let i = 0; i < cats.length; i++) {
-            if (decryptFilter === 'semua' || cats[i] === decryptFilter) {
-                filteredLog.push(result.log[i]);
-            }
-        }
-        
-        renderLogBox('log-decrypt-qna', filteredLog);
-    }
-    
-    function renderPlaintextAndLog(sub) {
-        const result = subjects[sub].decryptResult;
-        const plaintext = result.plaintext;
-        
-        let displayHtml = '';
-        
-        if (plaintext.includes('_=_SEP_ITEM_=_') || plaintext.includes('_=_SEP_QNA_=_')) {
-            const items = plaintext.split('_=_SEP_ITEM_=_');
-            items.forEach((item, i) => {
-                const [q, a] = item.split('_=_SEP_QNA_=_');
-                displayHtml += `
-                <div style="margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px;" class="student-qna-item">
-                    <p style="margin-bottom: 8px;"><strong>Soal ${i+1}:</strong> ${q || '-'}</p>
-                    ${userRole === 'guru' 
-                        ? `<p style="margin-bottom: 8px; color: #16a34a;"><strong>Kunci Jawaban ${i+1}:</strong> ${a || '-'}</p>` 
-                        : ''}
-                </div>`;
-            });
-        } else {
-            displayHtml = `<div><p><strong>Teks Asli:</strong> ${plaintext}</p></div>`; 
-        }
-
-        document.getElementById('output-plaintext-qna').innerHTML = displayHtml;
-        renderDecryptLog(sub);
-        document.getElementById('decrypt-qna-results').classList.remove('hidden');
-        
-        const btnSubmit = document.getElementById('btn-submit-exam');
-        if (btnSubmit) btnSubmit.style.display = 'block';
-    }
-
-    document.getElementById('btn-decrypt-qna').addEventListener('click', () => {
+    document.getElementById('btn-decrypt-qna')?.addEventListener('click', () => {
         const sub = selectDecrypt.value;
-        const cipher = document.getElementById('input-ciphertext-decrypt').value;
-        if (!cipher || !sub) return alert("Belum ada ciphertext.");
+        if (!sub) return alert("Pilih mata pelajaran terlebih dahulu.");
         
-        const result = decryptMessage(cipher, privateKey.d, privateKey.n);
-        subjects[sub].decryptResult = result;
+        // For teacher, we don't auto-decrypt anymore. Show info about per-student encryption.
+        const outputContainer = document.getElementById('output-plaintext-qna');
+        if (!outputContainer) return;
         
-        renderPlaintextAndLog(sub);
-        saveState();
-    });
-
-    document.getElementById('btn-submit-exam')?.addEventListener('click', () => {
-        if (!publicKey) return alert("Kunci publik tidak ditemukan!");
-        const answerInputs = document.querySelectorAll('.student-answer-input');
-        let studentAnswers = [];
-        answerInputs.forEach(input => {
-            const val = input.value.trim();
-            studentAnswers.push(val === "" ? "kosong" : val);
-        });
+        const encrypted = subjects[sub].encryptedForStudents || {};
+        let html = '';
         
-        const DELIM_ITEM = "_=_SEP_ITEM_=_";
-        const combinedAnswers = studentAnswers.join(DELIM_ITEM);
-        const result = encryptMessage(combinedAnswers, publicKey.e, publicKey.n);
+        if (Object.keys(encrypted).length === 0) {
+            html = '<p>Belum ada soal yang dienkripsi.</p>';
+        } else {
+            Object.keys(encrypted).forEach(email => {
+                const sk = studentKeys[email];
+                html += `
+                    <div style="margin-bottom: 16px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 12px;">
+                        <p style="margin-bottom: 8px;"><strong>${email}</strong></p>
+                        <p style="margin-bottom: 4px; font-size: 12px; color: #64748b;">Kunci Publik: (e=${sk?.publicKey?.e}, n=${sk?.publicKey?.n})</p>
+                        <p style="margin: 0; font-size: 12px; font-family: monospace; word-break: break-all; color: #94a3b8; max-height: 40px; overflow-y: auto;">
+                            Ciphertext: ${encrypted[email].ciphertext.substring(0, 120)}...
+                        </p>
+                    </div>
+                `;
+            });
+        }
         
-        document.getElementById('output-student-ciphertext').value = result.ciphertext;
-        document.getElementById('submit-exam-results').classList.remove('hidden');
+        outputContainer.innerHTML = html;
+        document.getElementById('decrypt-qna-results').classList.remove('hidden');
     });
 
     // Panggil loadState() saat aplikasi pertama kali dimuat

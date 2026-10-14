@@ -17,10 +17,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // State Variables
-    let publicKey = null;
-    let privateKey = null;
     let subjects = {};
     let activeSubject = localStorage.getItem('activeExamSubject');
+    let studentPublicKey = null; // Kunci publik siswa ini
 
     if (!activeSubject) {
         alert("Tidak ada mata pelajaran yang dipilih.");
@@ -28,9 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    document.getElementById('exam-title').innerText = `Mata Pelajaran: ${activeSubject}`;
+    document.getElementById('exam-title-2').innerText = `Mata Pelajaran: ${activeSubject}`;
 
-    // Load State from Supabase / localStorage
+    // --- Load State and Check Status ---
     async function loadState() {
         try {
             const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).single();
@@ -58,11 +57,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     });
                 }
                 
-                publicKey = parsed.publicKey;
-                privateKey = parsed.privateKey;
-                subjects = parsed.subjects;
-                
-                initExam();
+                subjects = parsed.subjects || {};
+
+                // Cek apakah siswa ini sudah mendaftarkan kunci publik
+                const studentKeys = parsed.studentKeys || {};
+                if (studentKeys[userEmail]) {
+                    studentPublicKey = studentKeys[userEmail].publicKey;
+                    showMyKeysCard(studentPublicKey);
+                    checkExamAvailability(parsed);
+                } else {
+                    // Jika belum, kembalikan ke dashboard
+                    alert("Anda belum mendaftarkan Kunci Publik. Silakan daftarkan di Dashboard.");
+                    window.location.href = "index.html";
+                }
             } else {
                 alert("Data ujian tidak ditemukan.");
                 window.location.href = "index.html";
@@ -73,8 +80,131 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    function checkExamAvailability(appState) {
+        const subjectData = appState.subjects?.[activeSubject];
+
+        if (!subjectData) {
+            alert("Mata pelajaran tidak ditemukan.");
+            window.location.href = "index.html";
+            return;
+        }
+
+        // Cek apakah guru sudah mengenkripsi soal khusus untuk siswa ini
+        const encForMe = subjectData.encryptedForStudents?.[userEmail];
+
+        if (encForMe) {
+            // Cek apakah sudah pernah mengerjakan
+            const savedResultStr = localStorage.getItem(`examFinished_${activeSubject}_${userEmail}`);
+            if (savedResultStr) {
+                try {
+                    const savedData = JSON.parse(savedResultStr);
+                    if (savedData.ciphertext === encForMe.ciphertext) {
+                        encryptedResultData = savedData.results;
+                        showSection('section-result');
+                        renderEncryptedResult();
+                        return;
+                    } else {
+                        localStorage.removeItem(`examFinished_${activeSubject}_${userEmail}`);
+                    }
+                } catch (e) {
+                    localStorage.removeItem(`examFinished_${activeSubject}_${userEmail}`);
+                }
+            }
+
+            // Soal tersedia, tampilkan halaman ujian
+            currentCiphertext = encForMe.ciphertext;
+            showSection('section-exam');
+            
+            // Cek apakah kunci yang digunakan untuk enkripsi SAMA dengan kunci murid saat ini
+            let keyMismatchWarning = '';
+            if (encForMe.publicKeyUsed && (encForMe.publicKeyUsed.e !== studentPublicKey.e || encForMe.publicKeyUsed.n !== studentPublicKey.n)) {
+                keyMismatchWarning = `
+                    <div class="alert alert-warning mt-3" style="border: 2px solid #ef4444; background-color: #fef2f2; color: #b91c1c;">
+                        <h4 style="margin: 0 0 10px 0;">⚠️ PERHATIAN: KUNCI TIDAK COCOK!</h4>
+                        <p style="margin: 0 0 10px 0;">Soal ini <strong>sudah terlanjur dienkripsi menggunakan Kunci Publik lama Anda</strong> <code>(e=${encForMe.publicKeyUsed.e}, n=${encForMe.publicKeyUsed.n})</code>.</p>
+                        <p style="margin: 0;">Sedangkan Kunci Publik Anda saat ini adalah <code>(e=${studentPublicKey.e}, n=${studentPublicKey.n})</code>.</p>
+                        <p style="margin: 10px 0 0 0; font-weight: bold;">SOLUSI: Silakan beritahu Guru Anda untuk menekan tombol "Enkripsi Soal untuk Semua Siswa" kembali agar soal ini dienkripsi dengan kunci baru Anda.</p>
+                    </div>
+                `;
+            }
+
+            const container = document.getElementById('exam-questions-container');
+            container.innerHTML = `
+                <div style="padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; word-break: break-all; color: #64748b; font-size: 13px; font-family: monospace;">
+                    <strong>Soal Ujian Terenkripsi (khusus untuk ${userEmail}):</strong><br><br>
+                    ${encForMe.ciphertext}
+                </div>
+                ${keyMismatchWarning}
+                <p style="margin-top: 15px; font-size: 14px; color: #64748b; font-weight: 500;">
+                    Masukkan Kunci Privat Anda di atas untuk mendekripsi soal ini.
+                </p>
+            `;
+        } else {
+            // Guru belum mengenkripsi soal untuk siswa ini
+            showSection('section-waiting');
+        }
+    }
+
+    function showSection(sectionId) {
+        ['section-keygen', 'section-exam', 'section-result', 'section-waiting'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.style.display = id === sectionId ? 'block' : 'none';
+                if (id === sectionId) el.classList.add('active');
+                else el.classList.remove('active');
+            }
+        });
+    }
+
+    // --- Refresh/Reload button ---
+    document.getElementById('btn-refresh-state')?.addEventListener('click', () => {
+        window.location.reload();
+    });
+
+    // --- My Keys Display ---
+    function showMyKeysCard(appStatePub) {
+        const savedKeysStr = localStorage.getItem(`myKeys_${userEmail}`);
+        if (savedKeysStr) {
+            try {
+                const k = JSON.parse(savedKeysStr);
+                document.getElementById('card-my-keys').style.display = 'block';
+                document.getElementById('disp-my-pub').innerText = `(${k.e}, ${k.n})`;
+                document.getElementById('disp-my-priv').innerText = `(${k.d}, ${k.n})`;
+                
+                // Autofill decrypt inputs for convenience
+                // const inputDSoal = document.getElementById('input-decrypt-soal-d');
+                // const inputNSoal = document.getElementById('input-decrypt-soal-n');
+                // if(inputDSoal && !inputDSoal.value) inputDSoal.value = k.d;
+                // if(inputNSoal && !inputNSoal.value) inputNSoal.value = k.n;
+                // 
+                // const inputDRes = document.getElementById('input-decrypt-result-d');
+                // const inputNRes = document.getElementById('input-decrypt-result-n');
+                // if(inputDRes && !inputDRes.value) inputDRes.value = k.d;
+                // if(inputNRes && !inputNRes.value) inputNRes.value = k.n;
+            } catch(e) {}
+        } else if (appStatePub) {
+            document.getElementById('card-my-keys').style.display = 'block';
+            document.getElementById('disp-my-pub').innerText = `(${appStatePub.e}, ${appStatePub.n})`;
+            document.getElementById('disp-my-priv').innerText = `(Tidak tersimpan di perangkat ini)`;
+        }
+    }
+
+    document.getElementById('btn-toggle-keys')?.addEventListener('click', (e) => {
+        const content = document.getElementById('my-keys-content');
+        if (content.classList.contains('hidden')) {
+            content.classList.remove('hidden');
+            e.target.innerText = 'Sembunyikan Kunci';
+        } else {
+            content.classList.add('hidden');
+            e.target.innerText = 'Tampilkan Kunci';
+        }
+    });
+
+    // --- Exam Logic ---
     let currentQuestions = [];
-    let currentAnswers = []; // Kunci Jawaban
+    let currentAnswers = [];
+    let currentCiphertext = '';
+    let encryptedResultData = [];
 
     function renderEncryptedResult() {
         const resultContainer = document.getElementById('result-encrypted-container');
@@ -94,108 +224,17 @@ document.addEventListener('DOMContentLoaded', async () => {
             `;
             resultContainer.appendChild(div);
         });
-
-        // Swap sections
-        document.getElementById('section-exam').style.display = 'none';
-        document.getElementById('section-result').style.display = 'block';
     }
 
-    function initExam() {
-        const subjectData = subjects[activeSubject];
-        if (!subjectData || !subjectData.encryptionResult) {
-            alert("Data ujian untuk mata pelajaran ini belum tersedia atau belum dienkripsi.");
-            window.location.href = "index.html";
-            return;
-        }
-
-        // Cek apakah sudah mengerjakan dan ciphertext sama (soal belum diubah)
-        const savedResultStr = localStorage.getItem(`examFinished_${activeSubject}_${userEmail}`);
-        if (savedResultStr) {
-            try {
-                const savedData = JSON.parse(savedResultStr);
-                // Validasi ciphertext agar jika soal diupdate/dibuat ulang, state usang dihapus
-                if (savedData.ciphertext === subjectData.encryptionResult.ciphertext) {
-                    encryptedResultData = savedData.results;
-                    renderEncryptedResult();
-                    return;
-                } else {
-                    localStorage.removeItem(`examFinished_${activeSubject}_${userEmail}`);
-                }
-            } catch (e) {
-                localStorage.removeItem(`examFinished_${activeSubject}_${userEmail}`);
-            }
-        }
-
-        // Jangan dekripsi otomatis, tampilkan ciphertext mentahnya ke user
-        const cipher = subjectData.encryptionResult.ciphertext;
-        
-        const container = document.getElementById('exam-questions-container');
-        container.innerHTML = `
-            <div style="padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; word-break: break-all; color: #64748b; font-size: 13px; font-family: monospace;">
-                <strong>Soal Ujian Terenkripsi:</strong><br><br>
-                ${cipher}
-            </div>
-            <p style="margin-top: 15px; font-size: 14px; color: #ef4444; font-weight: 500;">
-                Anda belum mendekripsi soal ini. Silakan masukkan Kunci Privat di atas.
-            </p>
-        `;
-    }
-
-    let encryptedResultData = [];
-
-    document.getElementById('btn-finish-exam').addEventListener('click', () => {
-        if (!confirm("Apakah Anda yakin ingin menyelesaikan ujian?")) return;
-
-        const inputs = document.querySelectorAll('.student-answer-input');
-        const studentAnswers = [];
-        inputs.forEach(input => {
-            const val = input.value.trim();
-            studentAnswers.push(val === "" ? "kosong" : val);
-        });
-
-        encryptedResultData = [];
-
-        // Generate the encrypted result views
-        const resultContainer = document.getElementById('result-encrypted-container');
-        resultContainer.innerHTML = '';
-        encryptedResultData = [];
-
-        currentQuestions.forEach((q, i) => {
-            const a = currentAnswers[i];
-            const sa = studentAnswers[i];
-
-            // Encrypt each individually
-            const encQ = encryptMessage(q, publicKey.e, publicKey.n).ciphertext;
-            const encA = encryptMessage(a, publicKey.e, publicKey.n).ciphertext;
-            const encSA = encryptMessage(sa, publicKey.e, publicKey.n).ciphertext;
-
-            encryptedResultData.push({
-                q: q, a: a, sa: sa,
-                encQ: encQ, encA: encA, encSA: encSA
-            });
-        });
-
-        // Simpan state telah selesai beserta identifikasi ciphertext soal
-        const dataToSave = {
-            ciphertext: subjects[activeSubject].encryptionResult.ciphertext,
-            results: encryptedResultData
-        };
-        localStorage.setItem(`examFinished_${activeSubject}_${userEmail}`, JSON.stringify(dataToSave));
-        
-        renderEncryptedResult();
-    });
-
+    // Decrypt Questions with student's private key
     document.getElementById('btn-decrypt-soal')?.addEventListener('click', () => {
         const dVal = document.getElementById('input-decrypt-soal-d').value.trim();
         const nVal = document.getElementById('input-decrypt-soal-n').value.trim();
-        const subjectData = subjects[activeSubject];
         
         if (!dVal || !nVal) return alert("Masukkan nilai d dan n terlebih dahulu.");
         
-        const cipher = subjectData.encryptionResult.ciphertext;
-
         try {
-            const result = decryptMessage(cipher, dVal, nVal);
+            const result = decryptMessage(currentCiphertext, dVal, nVal);
             const plaintext = result.plaintext;
 
             if (plaintext.includes('_=_SEP_ITEM_=_') || plaintext.includes('_=_SEP_QNA_=_')) {
@@ -228,25 +267,88 @@ document.addEventListener('DOMContentLoaded', async () => {
                     container.appendChild(div);
                 });
 
-                // Hide the decrypt question card
                 document.getElementById('card-decrypt-soal').style.display = 'none';
                 document.getElementById('btn-finish-exam').style.display = 'block';
             } else {
-                // Teks terdekripsi tapi delimiter hancur (kunci salah)
+                // Kunci salah → tampilkan teks rusak namun dalam format lembar soal
                 const container = document.getElementById('exam-questions-container');
-                container.innerHTML = `
-                    <div style="padding: 15px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; margin-bottom: 15px;">
-                        <p style="margin: 0; font-size: 13px; font-family: monospace; word-break: break-all; color: #64748b;">
-                            ${plaintext}
+                container.innerHTML = '';
+                
+                currentQuestions = [];
+                currentAnswers = [];
+
+                const numQuestions = subjects[activeSubject]?.qna?.length || 1;
+                const chunkLen = Math.max(1, Math.floor(plaintext.length / numQuestions));
+
+                for (let i = 0; i < numQuestions; i++) {
+                    const garbledQ = plaintext.substring(i * chunkLen, (i + 1) * chunkLen) || plaintext;
+                    currentQuestions.push(garbledQ);
+                    currentAnswers.push("wrong_key");
+
+                    const div = document.createElement('div');
+                    div.style.marginBottom = '20px';
+                    div.style.borderBottom = '1px dashed #cbd5e1';
+                    div.style.paddingBottom = '15px';
+                    div.innerHTML = `
+                        <p style="margin-bottom: 10px; font-weight: 500;">
+                            <strong>Soal ${i + 1}:</strong> 
+                            <span style="word-break: break-all; font-family: monospace; color: #ef4444;">${garbledQ || '-'}</span>
                         </p>
-                    </div>
-                `;
+                        <div>
+                            <label style="font-size: 13px; font-weight: 600; color: #475569;">Jawaban Anda:</label>
+                            <textarea class="student-answer-input" data-index="${i}" rows="3" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; margin-top: 6px;"></textarea>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                }
+
+                document.getElementById('card-decrypt-soal').style.display = 'none';
+                document.getElementById('btn-finish-exam').style.display = 'block';
             }
         } catch (e) {
             alert("Terjadi kesalahan. Pastikan d dan n berupa angka valid!");
         }
     });
 
+    // Finish Exam — encrypt results using student's OWN public key
+    document.getElementById('btn-finish-exam').addEventListener('click', () => {
+        if (!confirm("Apakah Anda yakin ingin menyelesaikan ujian?")) return;
+        if (!studentPublicKey) return alert("Kunci Publik tidak ditemukan!");
+
+        const inputs = document.querySelectorAll('.student-answer-input');
+        const studentAnswers = [];
+        inputs.forEach(input => {
+            const val = input.value.trim();
+            studentAnswers.push(val === "" ? "kosong" : val);
+        });
+
+        encryptedResultData = [];
+
+        currentQuestions.forEach((q, i) => {
+            const a = currentAnswers[i];
+            const sa = studentAnswers[i];
+
+            // Encrypt using STUDENT'S OWN public key
+            const encQ = encryptMessage(q, studentPublicKey.e, studentPublicKey.n).ciphertext;
+            const encA = encryptMessage(a, studentPublicKey.e, studentPublicKey.n).ciphertext;
+            const encSA = encryptMessage(sa, studentPublicKey.e, studentPublicKey.n).ciphertext;
+
+            encryptedResultData.push({
+                encQ: encQ, encA: encA, encSA: encSA
+            });
+        });
+
+        const dataToSave = {
+            ciphertext: currentCiphertext,
+            results: encryptedResultData
+        };
+        localStorage.setItem(`examFinished_${activeSubject}_${userEmail}`, JSON.stringify(dataToSave));
+        
+        showSection('section-result');
+        renderEncryptedResult();
+    });
+
+    // Decrypt Results
     document.getElementById('btn-decrypt-result').addEventListener('click', () => {
         const dVal = document.getElementById('input-decrypt-result-d').value.trim();
         const nVal = document.getElementById('input-decrypt-result-n').value.trim();
@@ -256,18 +358,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const decContainer = document.getElementById('result-decrypted-container');
             decContainer.innerHTML = '<h4 style="margin-top:0;">Hasil Dekripsi</h4>';
-            
-            let allSuccess = true;
 
             encryptedResultData.forEach((data, i) => {
-                // Decrypt from ciphertext using entered d and n
                 const decQ = decryptMessage(data.encQ, dVal, nVal).plaintext;
                 const decA = decryptMessage(data.encA, dVal, nVal).plaintext;
                 const decSA = decryptMessage(data.encSA, dVal, nVal).plaintext;
 
-                // Validate if it decrypted correctly by checking if it contains English/Indonesian chars (or just match length)
-                // For a robust system, if the keys are wrong, it outputs garbage.
-                
                 const isCorrect = decA.toLowerCase().trim() === decSA.toLowerCase().trim();
                 const color = isCorrect ? '#16a34a' : '#ef4444';
                 
