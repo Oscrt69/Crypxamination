@@ -1,7 +1,7 @@
 // rsa.js
 // Utility functions for RSA implemented with BigInt
 
-// GCD (Greatest Common Divisor)
+// Tugasnya mencari FPB dua angka.
 function gcd(a, b) {
     while (b !== 0n) {
         let temp = b;
@@ -11,7 +11,7 @@ function gcd(a, b) {
     return a;
 }
 
-// Extended Euclidean Algorithm to find modular inverse
+// Mencari modular inverse untuk mendapatkan kunci privat d.
 function modInverse(a, m) {
     let m0 = m;
     let y = 0n, x = 1n;
@@ -33,7 +33,7 @@ function modInverse(a, m) {
     return x;
 }
 
-// Modular exponentiation (base^exp % mod)
+// Tugasnya menghitung pangkat dengan sisa bagi.
 function modExp(base, exp, mod) {
     let res = 1n;
     base = base % mod;
@@ -45,7 +45,7 @@ function modExp(base, exp, mod) {
     return res;
 }
 
-// Check if prime (simple trial division for small primes)
+// Tugasnya memeriksa apakah sebuah angka prima.
 function isPrime(num) {
     if (num <= 1n) return false;
     if (num <= 3n) return true;
@@ -75,17 +75,17 @@ function generateKeys(p, q) {
     const n = p * q;
     const phi = (p - 1n) * (q - 1n);
 
-    // Choose e such that 1 < e < phi and gcd(e, phi) == 1
+    // Pilih e dengan syarat 1 < e < phi dan gcd(e, phi) = 1.
     let e = 65537n; // common choice
     if (e >= phi || gcd(e, phi) !== 1n) {
-        e = 3n;
+        e = 3n; //bilangan ganjil terkecil yang lebih besar dari 1
         while (e < phi) {
             if (gcd(e, phi) === 1n) break;
             e += 2n;
         }
     }
 
-    const d = modInverse(e, phi);
+    const d = modInverse(e, phi); //(e * d) mod phi = 1
 
     return {
         p: p.toString(),
@@ -100,7 +100,6 @@ function generateKeys(p, q) {
 }
 
 // Encrypt a string
-// We'll encrypt character by character (its char code) to make the explanation clear for students
 function encryptMessage(message, eStr, nStr) {
     const e = BigInt(eStr);
     const n = BigInt(nStr);
@@ -108,14 +107,14 @@ function encryptMessage(message, eStr, nStr) {
     let log = [];
     for (let i = 0; i < message.length; i++) {
         let m = BigInt(message.charCodeAt(i));
-        let c = modExp(m, e, n);
+        let c = modExp(m, e, n); // C = (M ^ E) mod N (RUMUS UTAMA RSA)
         ciphertext.push(c.toString());
         log.push(`'${message[i]}' (ASCII: ${m}) -> ${m}^${e} mod ${n} = ${c}`);
     }
     return {
         ciphertext: ciphertext.join(','),
         log: log
-    };
+    }
 }
 
 // Decrypt a string
@@ -127,7 +126,7 @@ function decryptMessage(cipherStr, dStr, nStr) {
     let log = [];
     for (let i = 0; i < cipherArray.length; i++) {
         let c = BigInt(cipherArray[i]);
-        let m = modExp(c, d, n);
+        let m = modExp(c, d, n); // Hitung M = (C ^ D) mod N (RUMUS UTAMA RSA)
         let char = String.fromCharCode(Number(m));
         plaintext += char;
         log.push(`${c} -> ${c}^${d} mod ${n} = ${m} ('${char}')`);

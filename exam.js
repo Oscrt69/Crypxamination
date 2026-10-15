@@ -4,12 +4,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Authentication Check
     const userRole = localStorage.getItem('userRole');
     const userEmail = localStorage.getItem('userEmail');
-    
+
     if (!userRole) {
         window.location.href = "login.html";
         return;
     }
-    
+
     document.getElementById('user-email-display').innerText = `${userEmail} (${userRole})`;
 
     document.getElementById('btn-back-home').addEventListener('click', () => {
@@ -30,11 +30,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('exam-title-2').innerText = `Mata Pelajaran: ${activeSubject}`;
 
     // --- Load State and Check Status ---
+    // Tugasnya memeriksa apakah siswa sudah punya kunci publik.
     async function loadState() {
         try {
             const { data, error } = await supabase.from('app_state').select('data').eq('id', 1).single();
             let saved = data?.data;
-            
+
             if (!saved || saved === '{}' || (typeof saved === 'object' && Object.keys(saved).length === 0)) {
                 saved = localStorage.getItem('crypxaminationState');
             }
@@ -56,7 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         return value;
                     });
                 }
-                
+
                 subjects = parsed.subjects || {};
 
                 // Cek apakah siswa ini sudah mendaftarkan kunci publik
@@ -80,6 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Tugasnya memeriksa apakah soal sudah tersedia atau belum.
     function checkExamAvailability(appState) {
         const subjectData = appState.subjects?.[activeSubject];
 
@@ -114,7 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Soal tersedia, tampilkan halaman ujian
             currentCiphertext = encForMe.ciphertext;
             showSection('section-exam');
-            
+
             // Cek apakah kunci yang digunakan untuk enkripsi SAMA dengan kunci murid saat ini
             let keyMismatchWarning = '';
             if (encForMe.publicKeyUsed && (encForMe.publicKeyUsed.e !== studentPublicKey.e || encForMe.publicKeyUsed.n !== studentPublicKey.n)) {
@@ -145,6 +147,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    // Tugasnya menampilkan bagian halaman yang diinginkan. 
     function showSection(sectionId) {
         ['section-keygen', 'section-exam', 'section-result', 'section-waiting'].forEach(id => {
             const el = document.getElementById(id);
@@ -161,7 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.location.reload();
     });
 
-    // --- My Keys Display ---
+    // Menampilkan kunci publik dan kunci privat milik siswa jika tersimpan di perangkat.
     function showMyKeysCard(appStatePub) {
         const savedKeysStr = localStorage.getItem(`myKeys_${userEmail}`);
         if (savedKeysStr) {
@@ -170,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 document.getElementById('card-my-keys').style.display = 'block';
                 document.getElementById('disp-my-pub').innerText = `(${k.e}, ${k.n})`;
                 document.getElementById('disp-my-priv').innerText = `(${k.d}, ${k.n})`;
-                
+
                 // Autofill decrypt inputs for convenience
                 // const inputDSoal = document.getElementById('input-decrypt-soal-d');
                 // const inputNSoal = document.getElementById('input-decrypt-soal-n');
@@ -181,7 +184,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // const inputNRes = document.getElementById('input-decrypt-result-n');
                 // if(inputDRes && !inputDRes.value) inputDRes.value = k.d;
                 // if(inputNRes && !inputNRes.value) inputNRes.value = k.n;
-            } catch(e) {}
+            } catch (e) { }
         } else if (appStatePub) {
             document.getElementById('card-my-keys').style.display = 'block';
             document.getElementById('disp-my-pub').innerText = `(${appStatePub.e}, ${appStatePub.n})`;
@@ -206,10 +209,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let currentCiphertext = '';
     let encryptedResultData = [];
 
+    // Tugasnya menampilkan hasil yang sudah dienkripsi.    
     function renderEncryptedResult() {
         const resultContainer = document.getElementById('result-encrypted-container');
         resultContainer.innerHTML = '';
-        
+
         encryptedResultData.forEach((data, i) => {
             const div = document.createElement('div');
             div.style.marginBottom = '15px';
@@ -217,7 +221,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             div.style.background = '#f8fafc';
             div.style.borderRadius = '6px';
             div.style.border = '1px solid #e2e8f0';
-            
+
             div.innerHTML = `
                 <p style="margin: 0 0 5px 0; font-size: 14px; word-break: break-all;"><strong>Soal ${i + 1}:</strong> <span style="color: #64748b;">${data.encQ}</span></p>
                 <p style="margin: 0; font-size: 14px; word-break: break-all;"><strong>Kunci Jawaban:</strong> <span style="color: #64748b;">${data.encA}</span></p>
@@ -230,9 +234,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-decrypt-soal')?.addEventListener('click', () => {
         const dVal = document.getElementById('input-decrypt-soal-d').value.trim();
         const nVal = document.getElementById('input-decrypt-soal-n').value.trim();
-        
+
         if (!dVal || !nVal) return alert("Masukkan nilai d dan n terlebih dahulu.");
-        
+
         try {
             const result = decryptMessage(currentCiphertext, dVal, nVal);
             const plaintext = result.plaintext;
@@ -241,7 +245,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const items = plaintext.split('_=_SEP_ITEM_=_');
                 const container = document.getElementById('exam-questions-container');
                 container.innerHTML = '';
-                
+
                 currentQuestions = [];
                 currentAnswers = [];
 
@@ -273,7 +277,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 // Kunci salah → tampilkan teks rusak namun dalam format lembar soal
                 const container = document.getElementById('exam-questions-container');
                 container.innerHTML = '';
-                
+
                 currentQuestions = [];
                 currentAnswers = [];
 
@@ -343,7 +347,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             results: encryptedResultData
         };
         localStorage.setItem(`examFinished_${activeSubject}_${userEmail}`, JSON.stringify(dataToSave));
-        
+
         showSection('section-result');
         renderEncryptedResult();
     });
@@ -352,7 +356,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('btn-decrypt-result').addEventListener('click', () => {
         const dVal = document.getElementById('input-decrypt-result-d').value.trim();
         const nVal = document.getElementById('input-decrypt-result-n').value.trim();
-        
+
         if (!dVal || !nVal) return alert("Masukkan nilai d dan n terlebih dahulu.");
 
         try {
@@ -366,14 +370,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const isCorrect = decA.toLowerCase().trim() === decSA.toLowerCase().trim();
                 const color = isCorrect ? '#16a34a' : '#ef4444';
-                
+
                 const div = document.createElement('div');
                 div.style.marginBottom = '15px';
                 div.style.padding = '10px';
                 div.style.background = 'white';
                 div.style.borderRadius = '6px';
                 div.style.border = `1px solid ${color}`;
-                
+
                 div.innerHTML = `
                     <p style="margin: 0 0 5px 0;"><strong>Soal ${i + 1}:</strong> ${decQ}</p>
                     <p style="margin: 0 0 5px 0; color: #16a34a;"><strong>Kunci Jawaban:</strong> ${decA}</p>
